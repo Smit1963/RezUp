@@ -37,7 +37,7 @@ def convert_pdf_to_image(uploaded_file):
     return pdf_parts
 
 # Setup Streamlit app
-st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="📋")
+st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="✦︎")
 
 # Custom CSS styling
 st.markdown("""
