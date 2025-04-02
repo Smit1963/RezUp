@@ -37,120 +37,207 @@ def convert_pdf_to_image(uploaded_file):
     return pdf_parts
 
 # Setup Streamlit app
-st.set_page_config(page_title="RezUp-Resume Optimizer", layout="wide")
+st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="📋")
+
+# Custom CSS styling
 st.markdown("""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        :root {
+            --primary: #4CAF50;
+            --secondary: #2196F3;
+            --accent: #FF5722;
+            --dark: #333333;
+            --light: #f8f9fa;
+        }
+        
+        html, body, [class*="css"] {
+            font-family: 'Poppins', sans-serif;
+        }
+        
         .main-title {
-            color: #4CAF50;
-            font-size: 2.5em;
+            color: var(--primary);
+            font-size: 2.8rem;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
         }
+        
+        .tagline {
+            color: var(--dark);
+            font-size: 1.3rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 400;
+        }
+        
         .sub-header {
-            color: #2196F3;
-            font-size: 1.5em;
-            text-align: center;
-            margin-bottom: 20px;
+            color: var(--secondary);
+            font-size: 1.8rem;
+            margin: 1.5rem 0 1rem;
+            font-weight: 600;
         }
+        
         .stButton button {
-            background-color: #4CAF50;
+            background-color: var(--primary);
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             text-align: center;
-            display: inline-block;
             font-size: 16px;
-            margin: 4px 2px;
-            transition-duration: 0.4s;
-            cursor: pointer;
+            margin: 8px 0;
+            border-radius: 8px;
+            transition: all 0.3s;
+            width: 100%;
         }
+        
         .stButton button:hover {
-            background-color: white;
-            color: black;
-            border: 2px solid #4CAF50;
+            background-color: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
+        
         .stTextArea textarea {
+            min-height: 150px;
             font-size: 16px;
+            border-radius: 8px;
+            padding: 12px;
         }
+        
         .centered {
             display: flex;
             justify-content: center;
             align-items: center;
             flex-direction: column;
+            gap: 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .file-uploader {
+            width: 100%;
+        }
+        
+        .success-message {
+            color: var(--primary);
+            font-weight: 600;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title">✦︎RezUp Till You Make It – AI That Fixes Your Resume!📋</h1>', unsafe_allow_html=True)
+# App Header
+st.markdown('<h1 class="main-title">✦ RezUp! Till You Make It</h1>', unsafe_allow_html=True)
+st.markdown('<p class="tagline">◆ RezUp Till You Make It – AI that fixes your resume</p>', unsafe_allow_html=True)
 
-st.markdown('<div class="centered">', unsafe_allow_html=True)
-input_text = st.text_area("📝 Enter your Job Description", key="input")
-uploaded_file = st.file_uploader("📂 Upload your Resume", type="pdf", key="file")
-st.markdown('</div>', unsafe_allow_html=True)
+# Main Content
+with st.container():
+    st.markdown('<div class="centered">', unsafe_allow_html=True)
+    input_text = st.text_area("📝 Enter Job Description", key="input", 
+                             placeholder="Paste the job description you're applying for...")
+    uploaded_file = st.file_uploader("📂 Upload Your Resume (PDF only)", type="pdf", key="file")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-if uploaded_file is not None:
-    st.write("✅ Uploaded Resume Successfully.")
+    if uploaded_file is not None:
+        st.markdown('<p class="success-message">✅ Resume uploaded successfully!</p>', unsafe_allow_html=True)
 
-submit_1 = st.button("🔍 Tell Me about the Resume")
-submit_2 = st.button("💡 How can I Improve my Skillset")
-submit_3 = st.button("🔑 Missing Keywords")
-submit_4 = st.button("📊 ATS Score")
+# Action Buttons
+col1, col2 = st.columns(2)
+with col1:
+    submit_1 = st.button("🔍 Resume Evaluation", key="eval", help="Get professional evaluation of your resume")
+    submit_2 = st.button("💡 Skillset Improvement", key="skills", help="Discover how to improve your skills")
 
+with col2:
+    submit_3 = st.button("🔑 Missing Keywords", key="keywords", help="Identify important missing keywords")
+    submit_4 = st.button("📊 ATS Score", key="score", help="Get your resume's ATS compatibility score")
+
+# Prompts
 input_prompt1 = """
-You are an experienced Technical Human Resource Manager with tech experience in any one field of data analysis, data science, machine learning engineering, AI engineering, DevOps, cloud computing, or cybersecurity. 
-Your task is to review the provided resume against the job description for these profiles. 
-Please share your professional evaluation on whether the candidate's profile aligns with the role. 
-Highlight the strengths and weaknesses of the applicant in relation to the specified job requirements.
+As an experienced Technical HR Manager with expertise in data science, AI, and tech fields, review this resume against the job description. 
+Provide a professional evaluation of alignment with the role, highlighting:
+1. Key strengths matching the job requirements
+2. Potential weaknesses or gaps
+3. Overall suitability for the position
 """
 
 input_prompt2 = """
-You are a career development coach with extensive knowledge in the fields of data analysis, data science, machine learning engineering, AI engineering, DevOps, cloud computing, or cybersecurity. 
-Your task is to review the provided resume and job description, and then suggest ways the candidate can improve their skillset to better align with the job requirements.
+As a career development coach specializing in tech fields, analyze this resume and job description to:
+1. Identify skill gaps between the candidate and job requirements
+2. Recommend specific skills to develop
+3. Suggest learning resources or pathways
+4. Provide actionable improvement steps
 """
 
 input_prompt3 = """
-You are a skilled ATS (Applicant Tracking System) scanner with a deep understanding of any one field of data analysis, data science, machine learning engineering, AI engineering, DevOps, cloud computing, or cybersecurity, and deep ATS functionality. 
-Your task is to evaluate the resume against the provided job description. Give me the percentage of match if the resume matches the job description. 
-First, provide the output as a percentage, then list the missing keywords, and finally, give your final thoughts.
+As an ATS optimization expert, evaluate this resume for:
+1. Percentage match with the job description (show as % at top)
+2. List of missing keywords from the resume
+3. Critical hard skills that are absent
+4. Final recommendations for improvement
+Format clearly with headings for each section.
 """
 
 input_prompt4 = """
-You are an experienced ATS (Applicant Tracking System) specialist with deep knowledge of keyword optimization in resumes. 
-Your task is to review the provided resume and job description, and identify which important keywords are missing from the resume.
+As an ATS specialist, identify:
+1. The most important missing keywords from the resume
+2. Which job requirements aren't addressed
+3. Suggested additions to improve ATS ranking
+Present in a bullet-point list with priority indicators (High/Medium/Low).
 """
 
+# Handle button actions
 if submit_1:
     if uploaded_file is not None:
-        pdf_content = convert_pdf_to_image(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt1)
-        st.markdown('<h2 class="sub-header">🔍 Resume Evaluation</h2>', unsafe_allow_html=True)
-        st.write(response)
+        with st.spinner("🔍 Analyzing your resume..."):
+            pdf_content = convert_pdf_to_image(uploaded_file)
+            response = get_gemini_response(input_text, pdf_content, input_prompt1)
+            st.markdown('<h2 class="sub-header">🔍 Professional Evaluation</h2>', unsafe_allow_html=True)
+            st.write(response)
     else:
-        st.write("📂 Upload your Resume to get the result")
+        st.warning("Please upload your resume to get analysis")
 
 elif submit_2:
     if uploaded_file is not None:
-        pdf_content = convert_pdf_to_image(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt2)
-        st.markdown('<h2 class="sub-header">💡 Skillset Improvement Suggestions</h2>', unsafe_allow_html=True)
-        st.write(response)
+        with st.spinner("💡 Generating improvement suggestions..."):
+            pdf_content = convert_pdf_to_image(uploaded_file)
+            response = get_gemini_response(input_text, pdf_content, input_prompt2)
+            st.markdown('<h2 class="sub-header">💡 Skillset Development Plan</h2>', unsafe_allow_html=True)
+            st.write(response)
     else:
-        st.write("📂 Upload your Resume to get the result")
+        st.warning("Please upload your resume to get suggestions")
 
 elif submit_3:
     if uploaded_file is not None:
-        pdf_content = convert_pdf_to_image(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt4)
-        st.markdown('<h2 class="sub-header">🔑 Missing Keywords</h2>', unsafe_allow_html=True)
-        st.write(response)
+        with st.spinner("🔍 Scanning for missing keywords..."):
+            pdf_content = convert_pdf_to_image(uploaded_file)
+            response = get_gemini_response(input_text, pdf_content, input_prompt4)
+            st.markdown('<h2 class="sub-header">🔑 Critical Missing Keywords</h2>', unsafe_allow_html=True)
+            st.write(response)
     else:
-        st.write("📂 Upload your Resume to get the result")
+        st.warning("Please upload your resume to check keywords")
 
 elif submit_4:
     if uploaded_file is not None:
-        pdf_content = convert_pdf_to_image(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt3)
-        st.markdown('<h2 class="sub-header">📊 ATS Score</h2>', unsafe_allow_html=True)
-        st.write(response)
+        with st.spinner("📊 Calculating ATS score..."):
+            pdf_content = convert_pdf_to_image(uploaded_file)
+            response = get_gemini_response(input_text, pdf_content, input_prompt3)
+            st.markdown('<h2 class="sub-header">📊 ATS Compatibility Report</h2>', unsafe_allow_html=True)
+            st.write(response)
     else:
-        st.write("📂 Upload your Resume to get the result")
+        st.warning("Please upload your resume to get ATS score")
