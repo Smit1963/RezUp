@@ -169,7 +169,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # App Header
-st.markdown('<h1 class="main-title">✦ RezUp! Till You Make It</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">☄️RezUp! Till You Make It</h1>', unsafe_allow_html=True)
 st.markdown('<p class="tagline">AI that fixes your resume</p>', unsafe_allow_html=True)
 
 # Main Content
