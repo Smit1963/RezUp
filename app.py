@@ -79,7 +79,7 @@ def create_pdf(resume_text):
             pdf.ln(5)
             continue
             
-        # Check for section headers (simple heuristic)
+        # Check for section headers
         if line.strip().endswith(':'):
             pdf.set_font('Arial', 'B', 14)
             pdf.cell(200, 10, txt=line.strip(), ln=1)
@@ -101,6 +101,8 @@ st.markdown("""
             --primary: #4CAF50;
             --secondary: #2196F3;
             --accent: #FF5722;
+            --skyblue: #87CEEB;
+            --darkskyblue: #4682B4;
             --dark: #333333;
             --light: #f8f9fa;
         }
@@ -154,6 +156,33 @@ st.markdown("""
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
+        .generate-btn-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .generate-btn {
+            background-color: var(--skyblue) !important;
+            color: white !important;
+            border: none !important;
+            padding: 20px 32px !important;
+            text-align: center !important;
+            font-size: 36px !important;
+            margin: 0 auto !important;
+            border-radius: 12px !important;
+            transition: all 0.3s !important;
+            width: 80% !important;
+            font-weight: 700 !important;
+            display: inline-block !important;
+            cursor: pointer !important;
+        }
+        
+        .generate-btn:hover {
+            background-color: var(--darkskyblue) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
+        }
+        
         .stTextArea textarea {
             min-height: 150px;
             font-size: 18px;
@@ -190,7 +219,7 @@ st.markdown("""
         
         .action-buttons {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 1.2rem;
             margin-top: 2rem;
         }
@@ -214,14 +243,11 @@ st.markdown("""
             .action-buttons {
                 grid-template-columns: 1fr;
             }
-        }
-        
-        .download-btn {
-            background-color: var(--accent) !important;
-        }
-        
-        .download-btn:hover {
-            background-color: #e64a19 !important;
+            .generate-btn {
+                width: 100% !important;
+                font-size: 28px !important;
+                padding: 16px 24px !important;
+            }
         }
     </style>
 """, unsafe_allow_html=True)
@@ -241,9 +267,9 @@ with st.container():
     if uploaded_file is not None:
         st.markdown('<p class="success-message">✅ Resume uploaded successfully!</p>', unsafe_allow_html=True)
 
-# Action Buttons in one line
+# Action Buttons - First Row
 st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3, col4 = st.columns(4)
 with col1:
     submit_1 = st.button("🔍 Resume Evaluation", key="eval", help="Get professional evaluation of your resume")
 with col2:
@@ -252,8 +278,11 @@ with col3:
     submit_3 = st.button("🔑 Missing Keywords", key="keywords", help="Identify important missing keywords")
 with col4:
     submit_4 = st.button("📊 ATS Score", key="score", help="Get your resume's ATS compatibility score")
-with col5:
-    submit_5 = st.button("✨ Generate Improved Resume", key="generate", help="Create an optimized resume based on insights")
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Generate Improved Resume Button - Centered Below
+st.markdown('<div class="generate-btn-container">', unsafe_allow_html=True)
+generate_clicked = st.button("✨ Generate Improved Resume", key="generate")
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Prompts
@@ -331,7 +360,7 @@ elif submit_4:
     else:
         st.warning("Please upload your resume to get ATS score")
 
-elif submit_5:
+elif generate_clicked:
     if uploaded_file is not None:
         with st.spinner("✨ Creating your optimized resume..."):
             pdf_content = convert_pdf_to_image(uploaded_file)
