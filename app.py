@@ -39,7 +39,7 @@ def convert_pdf_to_image(uploaded_file):
 # Setup Streamlit app
 st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="📋")
 
-# Custom CSS styling
+# Custom CSS styling with larger fonts
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
@@ -54,11 +54,12 @@ st.markdown("""
         
         html, body, [class*="css"] {
             font-family: 'Poppins', sans-serif;
+            font-size: 18px; /* Increased base font size */
         }
         
         .main-title {
             color: var(--primary);
-            font-size: 2.8rem;
+            font-size: 3.2rem; /* Increased from 2.8rem */
             text-align: center;
             margin-bottom: 0.5rem;
             font-weight: 700;
@@ -67,7 +68,7 @@ st.markdown("""
         
         .tagline {
             color: var(--dark);
-            font-size: 1.3rem;
+            font-size: 1.5rem; /* Increased from 1.3rem */
             text-align: center;
             margin-bottom: 2rem;
             font-weight: 400;
@@ -75,7 +76,7 @@ st.markdown("""
         
         .sub-header {
             color: var(--secondary);
-            font-size: 1.8rem;
+            font-size: 2rem; /* Increased from 1.8rem */
             margin: 1.5rem 0 1rem;
             font-weight: 600;
         }
@@ -84,13 +85,14 @@ st.markdown("""
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 14px 24px; /* Increased padding */
             text-align: center;
-            font-size: 16px;
+            font-size: 18px; /* Increased from 16px */
             margin: 8px 0;
             border-radius: 8px;
             transition: all 0.3s;
             width: 100%;
+            font-weight: 600;
         }
         
         .stButton button:hover {
@@ -101,9 +103,15 @@ st.markdown("""
         
         .stTextArea textarea {
             min-height: 150px;
-            font-size: 16px;
+            font-size: 18px; /* Increased from 16px */
             border-radius: 8px;
-            padding: 12px;
+            padding: 16px; /* Increased padding */
+        }
+        
+        /* Increase label font sizes */
+        .stTextArea label, .stFileUploader label {
+            font-size: 18px !important;
+            font-weight: 500 !important;
         }
         
         .centered {
@@ -111,7 +119,7 @@ st.markdown("""
             justify-content: center;
             align-items: center;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.5rem; /* Increased from 1rem */
             max-width: 800px;
             margin: 0 auto;
         }
@@ -124,14 +132,32 @@ st.markdown("""
             color: var(--primary);
             font-weight: 600;
             text-align: center;
-            margin: 1rem 0;
+            margin: 1.2rem 0; /* Increased */
+            font-size: 20px; /* Added explicit font size */
         }
         
         .action-buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
+            gap: 1.2rem; /* Increased from 1rem */
+            margin-top: 2rem; /* Increased from 1.5rem */
+        }
+        
+        /* Response text container */
+        .response-container {
+            font-size: 18px;
+            line-height: 1.6;
+            padding: 1.5rem;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            border-left: 4px solid var(--primary);
             margin-top: 1.5rem;
+        }
+        
+        /* Make warning messages more readable */
+        .stAlert {
+            font-size: 18px;
+            padding: 16px;
         }
         
         @media (max-width: 768px) {
@@ -211,7 +237,7 @@ if submit_1:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt1)
             st.markdown('<h2 class="sub-header">🔍 Professional Evaluation</h2>', unsafe_allow_html=True)
-            st.write(response)
+            st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get analysis")
 
@@ -221,7 +247,7 @@ elif submit_2:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt2)
             st.markdown('<h2 class="sub-header">💡 Skillset Development Plan</h2>', unsafe_allow_html=True)
-            st.write(response)
+            st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get suggestions")
 
@@ -231,7 +257,7 @@ elif submit_3:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt4)
             st.markdown('<h2 class="sub-header">🔑 Critical Missing Keywords</h2>', unsafe_allow_html=True)
-            st.write(response)
+            st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to check keywords")
 
@@ -241,7 +267,6 @@ elif submit_4:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt3)
             st.markdown('<h2 class="sub-header">📊 ATS Compatibility Report</h2>', unsafe_allow_html=True)
-            st.write(response)
+            st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get ATS score")
-        
