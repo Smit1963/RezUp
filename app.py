@@ -65,21 +65,28 @@ def generate_improved_resume(input_text, pdf_content):
     return response.text
 
 def create_pdf(resume_text):
-    """Create PDF using ReportLab with proper Unicode support"""
+    """Create PDF using ReportLab with proper style handling"""
     buffer = io.BytesIO()
-    
-    # Create styles
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='Center', alignment=TA_CENTER))
-    styles.add(ParagraphStyle(name='SectionHeader', 
-                            fontName='Helvetica-Bold',
-                            fontSize=14,
-                            spaceAfter=12))
-    styles.add(ParagraphStyle(name='BodyText', 
-                            fontName='Helvetica',
-                            fontSize=12,
-                            leading=14,
-                            spaceAfter=6))
+    
+    # Modify existing BodyText style instead of redefining
+    body_style = styles['BodyText']
+    body_style.spaceAfter = 6
+    
+    # Add custom styles with unique names
+    if 'RezUpSectionHeader' not in styles:
+        styles.add(ParagraphStyle(
+            name='RezUpSectionHeader',
+            fontName='Helvetica-Bold',
+            fontSize=14,
+            spaceAfter=12
+        ))
+    
+    if 'RezUpCenter' not in styles:
+        styles.add(ParagraphStyle(
+            name='RezUpCenter',
+            alignment=TA_CENTER
+        ))
     
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     story = []
@@ -88,22 +95,22 @@ def create_pdf(resume_text):
     story.append(Paragraph("Improved Resume", styles['Title']))
     story.append(Spacer(1, 24))
     
-    # Process each line
+    # Process content
     for line in resume_text.split('\n'):
         if not line.strip():
             story.append(Spacer(1, 12))
             continue
             
         if line.strip().endswith(':'):  # Section header
-            story.append(Paragraph(line, styles['SectionHeader']))
+            story.append(Paragraph(line, styles['RezUpSectionHeader']))
         else:
-            story.append(Paragraph(line, styles['BodyText']))
+            story.append(Paragraph(line, body_style))
     
     doc.build(story)
     buffer.seek(0)
     return buffer
 
-# Setup Streamlit app
+# Streamlit UI Setup
 st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="logo.png")
 
 # Custom CSS styling
@@ -281,20 +288,20 @@ with st.container():
     if uploaded_file is not None:
         st.markdown('<p class="success-message">✅ Resume uploaded successfully!</p>', unsafe_allow_html=True)
 
-# Action Buttons - First Row
+# Action Buttons
 st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    submit_1 = st.button("🔍 Resume Evaluation", key="eval", help="Get professional evaluation of your resume")
+    submit_1 = st.button("🔍 Resume Evaluation", key="eval")
 with col2:
-    submit_2 = st.button("💡 Skillset Improvement", key="skills", help="Discover how to improve your skills")
+    submit_2 = st.button("💡 Skillset Improvement", key="skills")
 with col3:
-    submit_3 = st.button("🔑 Missing Keywords", key="keywords", help="Identify important missing keywords")
+    submit_3 = st.button("🔑 Missing Keywords", key="keywords")
 with col4:
-    submit_4 = st.button("📊 ATS Score", key="score", help="Get your resume's ATS compatibility score")
+    submit_4 = st.button("📊 ATS Score", key="score")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Generate Improved Resume Button - Centered Below
+# Generate Button
 st.markdown('<div class="generate-btn-container">', unsafe_allow_html=True)
 generate_clicked = st.button("✨ Generate Improved Resume", key="generate")
 st.markdown('</div>', unsafe_allow_html=True)
@@ -333,7 +340,7 @@ As an ATS specialist, identify:
 Present in a bullet-point list with priority indicators (High/Medium/Low).
 """
 
-# Handle button actions
+# Button Handlers
 if submit_1:
     if uploaded_file is not None:
         with st.spinner("🔍 Analyzing your resume..."):
@@ -374,7 +381,6 @@ elif submit_4:
     else:
         st.warning("Please upload your resume to get ATS score")
 
-# Handle generate button separately
 if generate_clicked:
     if uploaded_file is not None:
         with st.spinner("✨ Creating your optimized resume..."):
@@ -384,7 +390,6 @@ if generate_clicked:
             st.markdown('<h2 class="sub-header">✨ Optimized Resume</h2>', unsafe_allow_html=True)
             st.markdown(f'<div class="response-container">{improved_resume}</div>', unsafe_allow_html=True)
             
-            # Create PDF using ReportLab
             try:
                 pdf_buffer = create_pdf(improved_resume)
                 st.download_button(
@@ -393,7 +398,6 @@ if generate_clicked:
                     file_name="improved_resume.pdf",
                     mime="application/pdf",
                     key="download-resume",
-                    help="Download your optimized resume as a PDF file",
                     type="primary",
                     use_container_width=True
                 )
