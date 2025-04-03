@@ -129,7 +129,7 @@ st.markdown("""
         
         .action-buttons {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
             margin-top: 1.5rem;
         }
@@ -157,15 +157,18 @@ with st.container():
     if uploaded_file is not None:
         st.markdown('<p class="success-message">✅ Resume uploaded successfully!</p>', unsafe_allow_html=True)
 
-# Action Buttons
-col1, col2 = st.columns(2)
+# Action Buttons in one line
+st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
+col1, col2, col3, col4 = st.columns(4)
 with col1:
     submit_1 = st.button("🔍 Resume Evaluation", key="eval", help="Get professional evaluation of your resume")
-    submit_2 = st.button("💡 Skillset Improvement", key="skills", help="Discover how to improve your skills")
-
 with col2:
+    submit_2 = st.button("💡 Skillset Improvement", key="skills", help="Discover how to improve your skills")
+with col3:
     submit_3 = st.button("🔑 Missing Keywords", key="keywords", help="Identify important missing keywords")
+with col4:
     submit_4 = st.button("📊 ATS Score", key="score", help="Get your resume's ATS compatibility score")
+st.markdown('</div>', unsafe_allow_html=True)
 
 # Prompts
 input_prompt1 = """
