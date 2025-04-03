@@ -4,3 +4,4 @@ google-generativeai
 Pillow
 PyMuPDF
 python-dotenv
+fpdf
