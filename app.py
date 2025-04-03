@@ -39,23 +39,40 @@ def convert_pdf_to_image(uploaded_file):
 # Setup Streamlit app
 st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="📋")
 
-# Custom CSS styling
+# Dark theme CSS styling
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
         
         :root {
-            --primary: #4CAF50;
-            --secondary: #2196F3;
-            --accent: #FF5722;
-            --dark: #333333;
-            --light: #f8f9fa;
+            --primary: #00e676;
+            --secondary: #03a9f4;
+            --accent: #ff5722;
+            --dark-bg: #121212;
+            --dark-secondary: #1e1e1e;
+            --dark-tertiary: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+        }
+        
+        /* Dark Mode Base Styling */
+        .main .block-container {
+            background-color: var(--dark-bg);
+            padding: 2rem;
+            border-radius: 12px;
         }
         
         html, body, [class*="css"] {
             font-family: 'Poppins', sans-serif;
+            color: var(--text-primary);
         }
         
+        /* Override Streamlit's base styling */
+        .stApp {
+            background-color: var(--dark-bg);
+        }
+        
+        /* Headers & Text */
         .main-title {
             color: var(--primary);
             font-size: 2.8rem;
@@ -66,7 +83,7 @@ st.markdown("""
         }
         
         .tagline {
-            color: var(--dark);
+            color: var(--text-secondary);
             font-size: 1.3rem;
             text-align: center;
             margin-bottom: 2rem;
@@ -80,9 +97,32 @@ st.markdown("""
             font-weight: 600;
         }
         
+        /* Input Elements */
+        .stTextArea textarea {
+            min-height: 150px;
+            font-size: 16px;
+            border-radius: 8px;
+            padding: 12px;
+            background-color: var(--dark-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--dark-tertiary);
+        }
+        
+        .stTextArea label {
+            color: var(--text-primary) !important;
+        }
+        
+        .stFileUploader {
+            border-radius: 8px;
+            padding: 1rem;
+            background-color: var(--dark-tertiary);
+            border: 1px dashed var(--secondary);
+        }
+        
+        /* Action Buttons */
         .stButton button {
             background-color: var(--primary);
-            color: white;
+            color: var(--dark-bg);
             border: none;
             padding: 12px 24px;
             text-align: center;
@@ -91,21 +131,16 @@ st.markdown("""
             border-radius: 8px;
             transition: all 0.3s;
             width: 100%;
+            font-weight: 600;
         }
         
         .stButton button:hover {
             background-color: var(--secondary);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,233,150,0.3);
         }
         
-        .stTextArea textarea {
-            min-height: 150px;
-            font-size: 16px;
-            border-radius: 8px;
-            padding: 12px;
-        }
-        
+        /* Layout Elements */
         .centered {
             display: flex;
             justify-content: center;
@@ -134,6 +169,27 @@ st.markdown("""
             margin-top: 1.5rem;
         }
         
+        /* Card Styling */
+        .card {
+            background-color: var(--dark-secondary);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            border-left: 4px solid var(--primary);
+        }
+        
+        /* Spinner and Warning Messages */
+        .stSpinner > div > div {
+            border-top-color: var(--primary) !important;
+        }
+        
+        .stAlert {
+            background-color: var(--dark-tertiary);
+            color: var(--text-primary);
+            border-radius: 8px;
+        }
+        
+        /* Responsive Adjustments */
         @media (max-width: 768px) {
             .action-buttons {
                 grid-template-columns: 1fr;
@@ -211,7 +267,7 @@ if submit_1:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt1)
             st.markdown('<h2 class="sub-header">🔍 Professional Evaluation</h2>', unsafe_allow_html=True)
-            st.write(response)
+            st.markdown(f'<div class="card">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get analysis")
 
@@ -221,7 +277,7 @@ elif submit_2:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt2)
             st.markdown('<h2 class="sub-header">💡 Skillset Development Plan</h2>', unsafe_allow_html=True)
-            st.write(response)
+            st.markdown(f'<div class="card">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get suggestions")
 
@@ -231,7 +287,7 @@ elif submit_3:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt4)
             st.markdown('<h2 class="sub-header">🔑 Critical Missing Keywords</h2>', unsafe_allow_html=True)
-            st.write(response)
+            st.markdown(f'<div class="card">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to check keywords")
 
@@ -241,6 +297,6 @@ elif submit_4:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt3)
             st.markdown('<h2 class="sub-header">📊 ATS Compatibility Report</h2>', unsafe_allow_html=True)
-            st.write(response)
+            st.markdown(f'<div class="card">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get ATS score")
