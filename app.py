@@ -6,6 +6,7 @@ import io
 import base64
 import os
 from dotenv import load_dotenv
+from fpdf import FPDF
 
 # Load environment variables
 load_dotenv()
@@ -36,6 +37,58 @@ def convert_pdf_to_image(uploaded_file):
     ]
     return pdf_parts
 
+def generate_improved_resume(input_text, pdf_content):
+    prompt = """
+    Based on the job description and current resume, generate an improved resume that:
+    1. Incorporates all missing keywords and skills
+    2. Maintains the original structure but enhances content
+    3. Optimizes for ATS systems
+    4. Presents information clearly and professionally
+    
+    Format the resume with these sections:
+    - Header (Name, Contact Info, LinkedIn)
+    - Professional Summary
+    - Technical Skills (categorized)
+    - Work Experience (with quantified achievements)
+    - Education
+    - Certifications (if any)
+    - Projects (if relevant)
+    
+    Make sure the content is concise, achievement-oriented, and tailored to the job description.
+    """
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response = model.generate_content([input_text, pdf_content[0], prompt])
+    return response.text
+
+def create_pdf(resume_text):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    
+    # Add title
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt="Improved Resume", ln=1, align='C')
+    pdf.ln(10)
+    
+    # Reset font for content
+    pdf.set_font("Arial", size=12)
+    
+    # Split text into lines and add to PDF
+    for line in resume_text.split('\n'):
+        if line.strip() == '':  # Skip empty lines
+            pdf.ln(5)
+            continue
+            
+        # Check for section headers (simple heuristic)
+        if line.strip().endswith(':'):
+            pdf.set_font('Arial', 'B', 14)
+            pdf.cell(200, 10, txt=line.strip(), ln=1)
+            pdf.set_font('Arial', size=12)
+        else:
+            pdf.multi_cell(0, 5, txt=line)
+    
+    return pdf
+
 # Setup Streamlit app
 st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="logo.png")
 
@@ -54,12 +107,12 @@ st.markdown("""
         
         html, body, [class*="css"] {
             font-family: 'Poppins', sans-serif;
-            font-size: 18px; /* Increased base font size */
+            font-size: 18px;
         }
         
         .main-title {
             color: var(--primary);
-            font-size: 3.2rem; /* Increased from 2.8rem */
+            font-size: 3.2rem;
             text-align: center;
             margin-bottom: 0.5rem;
             font-weight: 700;
@@ -68,7 +121,7 @@ st.markdown("""
         
         .tagline {
             color: var(--dark);
-            font-size: 1.5rem; /* Increased from 1.3rem */
+            font-size: 1.5rem;
             text-align: center;
             margin-bottom: 2rem;
             font-weight: 400;
@@ -76,7 +129,7 @@ st.markdown("""
         
         .sub-header {
             color: var(--secondary);
-            font-size: 2rem; /* Increased from 1.8rem */
+            font-size: 2rem;
             margin: 1.5rem 0 1rem;
             font-weight: 600;
         }
@@ -85,9 +138,9 @@ st.markdown("""
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 14px 24px; /* Increased padding */
+            padding: 14px 24px;
             text-align: center;
-            font-size: 18px; /* Increased from 16px */
+            font-size: 18px;
             margin: 8px 0;
             border-radius: 8px;
             transition: all 0.3s;
@@ -103,12 +156,11 @@ st.markdown("""
         
         .stTextArea textarea {
             min-height: 150px;
-            font-size: 18px; /* Increased from 16px */
+            font-size: 18px;
             border-radius: 8px;
-            padding: 16px; /* Increased padding */
+            padding: 16px;
         }
         
-        /* Increase label font sizes */
         .stTextArea label, .stFileUploader label {
             font-size: 18px !important;
             font-weight: 500 !important;
@@ -119,7 +171,7 @@ st.markdown("""
             justify-content: center;
             align-items: center;
             flex-direction: column;
-            gap: 1.5rem; /* Increased from 1rem */
+            gap: 1.5rem;
             max-width: 800px;
             margin: 0 auto;
         }
@@ -132,18 +184,17 @@ st.markdown("""
             color: var(--primary);
             font-weight: 600;
             text-align: center;
-            margin: 1.2rem 0; /* Increased */
-            font-size: 20px; /* Added explicit font size */
+            margin: 1.2rem 0;
+            font-size: 20px;
         }
         
         .action-buttons {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1.2rem; /* Increased from 1rem */
-            margin-top: 2rem; /* Increased from 1.5rem */
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1.2rem;
+            margin-top: 2rem;
         }
         
-        /* Response text container */
         .response-container {
             font-size: 18px;
             line-height: 1.6;
@@ -154,7 +205,6 @@ st.markdown("""
             margin-top: 1.5rem;
         }
         
-        /* Make warning messages more readable */
         .stAlert {
             font-size: 18px;
             padding: 16px;
@@ -164,6 +214,14 @@ st.markdown("""
             .action-buttons {
                 grid-template-columns: 1fr;
             }
+        }
+        
+        .download-btn {
+            background-color: var(--accent) !important;
+        }
+        
+        .download-btn:hover {
+            background-color: #e64a19 !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -185,7 +243,7 @@ with st.container():
 
 # Action Buttons in one line
 st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
     submit_1 = st.button("🔍 Resume Evaluation", key="eval", help="Get professional evaluation of your resume")
 with col2:
@@ -194,6 +252,8 @@ with col3:
     submit_3 = st.button("🔑 Missing Keywords", key="keywords", help="Identify important missing keywords")
 with col4:
     submit_4 = st.button("📊 ATS Score", key="score", help="Get your resume's ATS compatibility score")
+with col5:
+    submit_5 = st.button("✨ Generate Improved Resume", key="generate", help="Create an optimized resume based on insights")
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Prompts
@@ -270,3 +330,29 @@ elif submit_4:
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get ATS score")
+
+elif submit_5:
+    if uploaded_file is not None:
+        with st.spinner("✨ Creating your optimized resume..."):
+            pdf_content = convert_pdf_to_image(uploaded_file)
+            improved_resume = generate_improved_resume(input_text, pdf_content)
+            
+            st.markdown('<h2 class="sub-header">✨ Optimized Resume</h2>', unsafe_allow_html=True)
+            st.markdown(f'<div class="response-container">{improved_resume}</div>', unsafe_allow_html=True)
+            
+            # Create PDF and offer download
+            pdf = create_pdf(improved_resume)
+            pdf_bytes = pdf.output(dest='S').encode('latin1')
+            
+            st.download_button(
+                label="📄 Download Improved Resume (PDF)",
+                data=pdf_bytes,
+                file_name="improved_resume.pdf",
+                mime="application/pdf",
+                key="download-resume",
+                help="Download your optimized resume as a PDF file",
+                type="primary",
+                use_container_width=True
+            )
+    else:
+        st.warning("Please upload your resume to generate an improved version")
