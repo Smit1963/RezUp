@@ -8,10 +8,8 @@ import os
 import re
 from dotenv import load_dotenv
 from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
-from reportlab.lib.enums import TA_CENTER
 
 # Load environment variables
 load_dotenv()
