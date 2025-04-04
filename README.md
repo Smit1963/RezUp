@@ -1,6 +1,8 @@
 # ☄️ RezUp - AI Resume Optimizer
 
-![RezUp Banner](https://raw.githubusercontent.com/Smit1963/RezUp/main/banner.png)
+<div align="center">
+  <img src="assets/banner.png" alt="RezUp Banner" width="800">
+</div>
 
 An intelligent resume optimization tool powered by Google's Gemini AI that helps job seekers tailor their resumes to specific job descriptions, improving ATS compatibility and interview chances.
 
