@@ -73,43 +73,42 @@ def create_pdf(resume_text):
     buffer = io.BytesIO()
     styles = getSampleStyleSheet()
     
-    # Add custom styles
-    styles.add(ParagraphStyle(
-        name='RezUpHeader',
-        fontName='Helvetica-Bold',
-        fontSize=16,
-        spaceAfter=12
-    ))
+    # Modify existing BodyText style instead of redefining
+    body_style = styles['BodyText']
+    body_style.spaceAfter = 6
     
-    styles.add(ParagraphStyle(
-        name='RezUpSubheader',
-        fontName='Helvetica-Bold',
-        fontSize=14,
-        spaceAfter=8
-    ))
+    # Add custom styles with unique names
+    if 'RezUpSectionHeader' not in styles:
+        styles.add(ParagraphStyle(
+            name='RezUpSectionHeader',
+            fontName='Helvetica-Bold',
+            fontSize=14,
+            spaceAfter=12
+        ))
     
-    styles.add(ParagraphStyle(
-        name='RezUpBody',
-        fontSize=12,
-        leading=14,
-        spaceAfter=6
-    ))
+    if 'RezUpCenter' not in styles:
+        styles.add(ParagraphStyle(
+            name='RezUpCenter',
+            alignment=TA_CENTER
+        ))
     
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     story = []
+    
+    # Add title
+    story.append(Paragraph("Improved Resume", styles['Title']))
+    story.append(Spacer(1, 24))
     
     # Process content
     for line in resume_text.split('\n'):
         if not line.strip():
             story.append(Spacer(1, 12))
-        elif line.startswith('## '):
-            story.append(Paragraph(line[3:], styles['RezUpHeader']))
-        elif line.startswith('### '):
-            story.append(Paragraph(line[4:], styles['RezUpSubheader']))
-        elif line.startswith('**') and line.endswith('**'):
-            story.append(Paragraph(line[2:-2], styles['Heading3']))
+            continue
+            
+        if line.strip().endswith(':'):  # Section header
+            story.append(Paragraph(line, styles['RezUpSectionHeader']))
         else:
-            story.append(Paragraph(line, styles['RezUpBody']))
+            story.append(Paragraph(line, body_style))
     
     doc.build(story)
     buffer.seek(0)
@@ -139,27 +138,25 @@ def evaluate_resume_progress(original_score, optimized_score, original_missing, 
     improvement = optimized_score - original_score
     recovered_keywords = set(original_missing) - set(optimized_missing)
     
-    recommendations = [
-        "More targeted keyword integration",
-        "Better achievement quantification",
-        "Improved section organization"
-    ] if improvement <= 5 else ["Great improvement! Maintain these changes"]
+    report = f"""
+    ## ATS Optimization Progress Report
     
-    return f"""
-## ATS Optimization Progress Report
-
-**Original Score**: {original_score}%  
-**Optimized Score**: {optimized_score}%  
-**Improvement**: {improvement}%  
-
-### Key Improvements:
-- Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords) if recovered_keywords else 'None'}
-- Improved formatting for better ATS parsing  
-- Enhanced keyword placement and frequency  
-
-### Recommendations:
-{'- ' + '\n- '.join(recommendations)}
-"""
+    **Original Score**: {original_score}%
+    **Optimized Score**: {optimized_score}%
+    **Improvement**: {improvement}%
+    
+    ### Key Improvements:
+    - Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords)}
+    - Improved formatting for better ATS parsing
+    - Enhanced keyword placement and frequency
+    
+    ### Recommendations:
+    {'' if improvement > 5 else 'The optimization needs further work. Consider:'}
+    {'' if improvement > 5 else '- More targeted keyword integration'}
+    {'' if improvement > 5 else '- Better achievement quantification'}
+    {'' if improvement > 5 else '- Improved section organization'}
+    """
+    return report
 
 # Streamlit UI Setup
 st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="logo.png")
@@ -167,7 +164,211 @@ st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_ic
 # Custom CSS styling
 st.markdown("""
     <style>
-        /* [Keep all your original CSS exactly the same] */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        :root {
+            --primary: #4CAF50;
+            --secondary: #2196F3;
+            --accent: #FF5722;
+            --skyblue: #87CEEB;
+            --darkskyblue: #4682B4;
+            --dark: #333333;
+            --light: #f8f9fa;
+        }
+        
+        html, body, [class*="css"] {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+        }
+        
+        .main-title {
+            color: var(--primary);
+            font-size: 3.2rem;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .tagline {
+            color: var(--dark);
+            font-size: 1.5rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 400;
+        }
+        
+        .sub-header {
+            color: var(--secondary);
+            font-size: 2rem;
+            margin: 1.5rem 0 1rem;
+            font-weight: 600;
+        }
+        
+        .stButton button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            text-align: center;
+            font-size: 18px;
+            margin: 8px 0;
+            border-radius: 8px;
+            transition: all 0.3s;
+            width: 100%;
+            font-weight: 600;
+        }
+        
+        .stButton button:hover {
+            background-color: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .generate-btn-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .generate-btn {
+            background-color: var(--skyblue) !important;
+            color: white !important;
+            border: none !important;
+            padding: 20px 32px !important;
+            text-align: center !important;
+            font-size: 36px !important;
+            margin: 0 auto !important;
+            border-radius: 12px !important;
+            transition: all 0.3s !important;
+            width: 80% !important;
+            font-weight: 700 !important;
+            display: inline-block !important;
+            cursor: pointer !important;
+        }
+        
+        .generate-btn:hover {
+            background-color: var(--darkskyblue) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
+        }
+        
+        .stTextArea textarea {
+            min-height: 150px;
+            font-size: 18px;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .stTextArea label, .stFileUploader label {
+            font-size: 18px !important;
+            font-weight: 500 !important;
+        }
+        
+        .centered {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .file-uploader {
+            width: 100%;
+        }
+        
+        .success-message {
+            color: var(--primary);
+            font-weight: 600;
+            text-align: center;
+            margin: 1.2rem 0;
+            font-size: 20px;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.2rem;
+            margin-top: 2rem;
+        }
+        
+        .response-container {
+            font-size: 18px;
+            line-height: 1.6;
+            padding: 1.5rem;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            border-left: 4px solid var(--primary);
+            margin-top: 1.5rem;
+        }
+        
+        .stAlert {
+            font-size: 18px;
+            padding: 16px;
+        }
+        
+        .progress-bar {
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary);
+            border-radius: 10px;
+            transition: width 0.5s;
+        }
+        
+        .score-comparison {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+        
+        .score-box {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            width: 48%;
+        }
+        
+        .original-score {
+            background-color: #ffebee;
+            border: 2px solid #ef9a9a;
+        }
+        
+        .optimized-score {
+            background-color: #e8f5e9;
+            border: 2px solid #a5d6a7;
+        }
+        
+        .score-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+            .generate-btn {
+                width: 100% !important;
+                font-size: 28px !important;
+                padding: 16px 24px !important;
+            }
+            .score-comparison {
+                flex-direction: column;
+            }
+            .score-box {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -186,10 +387,6 @@ with st.container():
     if uploaded_file is not None:
         st.markdown('<p class="success-message">✅ Resume uploaded successfully!</p>', unsafe_allow_html=True)
 
-# Initialize session state
-if 'generate_clicked' not in st.session_state:
-    st.session_state.generate_clicked = False
-
 # Action Buttons
 st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
 col1, col2, col3, col4 = st.columns(4)
@@ -204,10 +401,65 @@ with col4:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Generate Button
-if st.button("✨ Generate Improved Resume", key="generate"):
-    st.session_state.generate_clicked = True
+st.markdown('<div class="generate-btn-container">', unsafe_allow_html=True)
+generate_clicked = st.button("✨ Generate Improved Resume", key="generate")
+st.markdown('</div>', unsafe_allow_html=True)
 
-# Prompts (keep your original prompts exactly the same)
+# Prompts
+input_prompt1 = """
+As an experienced Technical HR Manager with expertise in data science, AI, and tech fields, review this resume against the job description. 
+Provide a professional evaluation of alignment with the role, highlighting:
+1. Key strengths matching the job requirements
+2. Potential weaknesses or gaps
+3. Overall suitability for the position
+Include a percentage match score at the top (e.g., "Current match: 65%").
+"""
+
+input_prompt2 = """
+As a career development coach specializing in tech fields, analyze this resume and job description to:
+1. Identify skill gaps between the candidate and job requirements
+2. Recommend specific skills to develop
+3. Suggest learning resources or pathways
+4. Provide actionable improvement steps
+"""
+
+input_prompt3 = """
+As an ATS optimization expert, evaluate this resume for:
+1. Percentage match with the job description (show as % at top)
+2. List of present keywords from the job description (with frequency)
+3. List of missing keywords from the job description
+4. Formatting issues that might affect ATS parsing
+5. Final recommendations for improvement
+Format clearly with headings for each section and provide specific metrics.
+Example format:
+Current ATS Match: 65%
+
+Present Keywords:
+- Python (3 mentions)
+- Machine Learning (2 mentions)
+
+Missing Keywords:
+- TensorFlow
+- Data Pipelines
+
+Formatting Issues:
+- Missing section headers
+- Inconsistent bullet points
+
+Recommendations:
+1. Add missing keywords naturally in context
+2. Standardize formatting
+3. Quantify achievements
+"""
+
+input_prompt4 = """
+As an ATS specialist, identify:
+1. The most important missing keywords from the resume
+2. Which job requirements aren't addressed
+3. Suggested additions to improve ATS ranking
+Present in a bullet-point list with priority indicators (High/Medium/Low).
+Include a percentage score at the top (e.g., "Current ATS match: 65%").
+"""
 
 # Button Handlers
 if submit_1:
@@ -217,6 +469,7 @@ if submit_1:
             response = get_gemini_response(input_text, pdf_content, input_prompt1)
             st.markdown('<h2 class="sub-header">🔍 Professional Evaluation</h2>', unsafe_allow_html=True)
             
+            # Extract and display score
             score = extract_score_from_evaluation(response)
             st.markdown(f"""
             <div class="progress-bar">
@@ -246,6 +499,7 @@ elif submit_3:
             response = get_gemini_response(input_text, pdf_content, input_prompt4)
             st.markdown('<h2 class="sub-header">🔑 Critical Missing Keywords</h2>', unsafe_allow_html=True)
             
+            # Extract and display score
             score = extract_score_from_evaluation(response)
             st.markdown(f"""
             <div class="progress-bar">
@@ -265,6 +519,7 @@ elif submit_4:
             response = get_gemini_response(input_text, pdf_content, input_prompt3)
             st.markdown('<h2 class="sub-header">📊 ATS Compatibility Report</h2>', unsafe_allow_html=True)
             
+            # Extract and display score
             score = extract_score_from_evaluation(response)
             st.markdown(f"""
             <div class="progress-bar">
@@ -277,7 +532,7 @@ elif submit_4:
     else:
         st.warning("Please upload your resume to get ATS score")
 
-if st.session_state.generate_clicked:
+if generate_clicked:
     if uploaded_file is not None and input_text:
         with st.spinner("✨ Creating your optimized resume..."):
             # First get original evaluation
@@ -354,6 +609,3 @@ if st.session_state.generate_clicked:
         st.warning("Please enter a job description to optimize your resume")
     else:
         st.warning("Please upload your resume to generate an improved version")
-    
-    # Reset the generate click state
-    st.session_state.generate_clicked = False
