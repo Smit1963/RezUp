@@ -73,42 +73,43 @@ def create_pdf(resume_text):
     buffer = io.BytesIO()
     styles = getSampleStyleSheet()
     
-    # Modify existing BodyText style instead of redefining
-    body_style = styles['BodyText']
-    body_style.spaceAfter = 6
+    # Add custom styles
+    styles.add(ParagraphStyle(
+        name='RezUpHeader',
+        fontName='Helvetica-Bold',
+        fontSize=16,
+        spaceAfter=12
+    ))
     
-    # Add custom styles with unique names
-    if 'RezUpSectionHeader' not in styles:
-        styles.add(ParagraphStyle(
-            name='RezUpSectionHeader',
-            fontName='Helvetica-Bold',
-            fontSize=14,
-            spaceAfter=12
-        ))
+    styles.add(ParagraphStyle(
+        name='RezUpSubheader',
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        spaceAfter=8
+    ))
     
-    if 'RezUpCenter' not in styles:
-        styles.add(ParagraphStyle(
-            name='RezUpCenter',
-            alignment=TA_CENTER
-        ))
+    styles.add(ParagraphStyle(
+        name='RezUpBody',
+        fontSize=12,
+        leading=14,
+        spaceAfter=6
+    ))
     
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     story = []
-    
-    # Add title
-    story.append(Paragraph("Improved Resume", styles['Title']))
-    story.append(Spacer(1, 24))
     
     # Process content
     for line in resume_text.split('\n'):
         if not line.strip():
             story.append(Spacer(1, 12))
-            continue
-            
-        if line.strip().endswith(':'):  # Section header
-            story.append(Paragraph(line, styles['RezUpSectionHeader']))
+        elif line.startswith('## '):
+            story.append(Paragraph(line[3:], styles['RezUpHeader']))
+        elif line.startswith('### '):
+            story.append(Paragraph(line[4:], styles['RezUpSubheader']))
+        elif line.startswith('**') and line.endswith('**'):
+            story.append(Paragraph(line[2:-2], styles['Heading3']))
         else:
-            story.append(Paragraph(line, body_style))
+            story.append(Paragraph(line, styles['RezUpBody']))
     
     doc.build(story)
     buffer.seek(0)
