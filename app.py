@@ -185,11 +185,20 @@ st.markdown("""
             font-weight: 400;
         }
 
+        /* Style adjustment for dark mode */
+        .streamlit-dark-theme .tagline {
+            color: var(--light); /* Light text for tagline in dark mode */
+        }
+
         .sub-header {
             color: var(--secondary);
             font-size: 2rem;
             margin: 1.5rem 0 1rem;
             font-weight: 600;
+        }
+
+        .streamlit-dark-theme .sub-header {
+            color: var(--light); /* Light text for sub-headers in dark mode */
         }
 
         .stButton button {
@@ -296,10 +305,6 @@ st.markdown("""
             background-color: #262730; /* Dark background for dark mode */
             color: var(--light); /* Light text color for dark mode */
             border-left-color: var(--secondary);
-        }
-
-        .streamlit-dark-theme .sub-header {
-            color: var(--light); /* Light text for sub-headers in dark mode */
         }
 
         .stAlert {
