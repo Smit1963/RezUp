@@ -145,7 +145,8 @@ st.markdown("""
             font-weight: 400;
         }
 
-        .streamlit-dark-theme p.tagline {
+        /* Style adjustment for dark mode */
+        .streamlit-dark-theme div.centered > p.tagline { /* More specific selector */
             color: var(--light) !important; /* Set color to white in dark mode */
         }
 
