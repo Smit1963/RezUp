@@ -31,8 +31,7 @@ def convert_pdf_to_image(uploaded_file):
     return pdf_parts
 
 def generate_improved_resume(input_text, pdf_content):
-    prompt = """
-    Based on the job description and current resume, generate an improved resume that:
+    prompt = """Based on the job description and current resume, generate an improved resume that:
     1. Incorporates all missing keywords and skills from the job description
     2. Maintains the original structure but enhances content with quantifiable achievements
     3. Optimizes for ATS systems with proper keyword placement
@@ -50,8 +49,7 @@ def generate_improved_resume(input_text, pdf_content):
     - Projects (if relevant)
 
     Make sure the content is concise, achievement-oriented, and perfectly tailored to the job description.
-    Include specific keywords from the job description naturally in context.
-    """
+    Include specific keywords from the job description naturally in context."""
     model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content([input_text, pdf_content[0], prompt])
     return response.text
@@ -145,9 +143,8 @@ st.markdown("""
             font-weight: 400;
         }
 
-        /* Style adjustment for dark mode */
-        .streamlit-dark-theme .tagline { /* Targeting the tagline directly */
-            color: var(--light) !important; /* Set color to white in dark mode */
+        .streamlit-dark-theme .tagline {
+            color: var(--light) !important;
         }
 
         .sub-header {
@@ -364,25 +361,20 @@ st.markdown('<div class="generate-btn-container">', unsafe_allow_html=True)
 generate_clicked = st.button("✨ Generate Improved Resume", key="generate")
 st.markdown('</div>', unsafe_allow_html=True)
 
-input_prompt1 = """
-As an experienced Technical HR Manager with expertise in data science, AI, and tech fields, review this resume against the job description.
+input_prompt1 = """As an experienced Technical HR Manager with expertise in data science, AI, and tech fields, review this resume against the job description.
 Provide a professional evaluation of alignment with the role, highlighting:
 1. Key strengths matching the job requirements
 2. Potential weaknesses or gaps
 3. Overall suitability for the position
-Include a percentage match score at the top (e.g., "Current match: 65%").
-"""
+Include a percentage match score at the top (e.g., "Current match: 65%")."""
 
-input_prompt2 = """
-As a career development coach specializing in tech fields, analyze this resume and job description to:
+input_prompt2 = """As a career development coach specializing in tech fields, analyze this resume and job description to:
 1. Identify skill gaps between the candidate and job requirements
 2. Recommend specific skills to develop
 3. Suggest learning resources or pathways
-4. Provide actionable improvement steps
-"""
+4. Provide actionable improvement steps"""
 
-input_prompt3 = """
-As an ATS optimization expert, evaluate this resume for:
+input_prompt3 = """As an ATS optimization expert, evaluate this resume for:
 1. Percentage match with the job description (show as % at top)
 2. List of present keywords from the job description (with frequency)
 3. List of missing keywords from the job description
@@ -407,17 +399,14 @@ Formatting Issues:
 Recommendations:
 1. Add missing keywords naturally in context
 2. Standardize formatting
-3. Quantify achievements
-"""
+3. Quantify achievements"""
 
-input_prompt4 = """
-As an ATS specialist, identify:
+input_prompt4 = """As an ATS specialist, identify:
 1. The most important missing keywords from the resume
 2. Which job requirements aren't addressed
 3. Suggested additions to improve ATS ranking
 Present in a bullet-point list with priority indicators (High/Medium/Low).
-Include a percentage score at the top (e.g., "Current ATS match: 65%").
-"""
+Include a percentage score at the top (e.g., "Current ATS match: 65%")."""
 
 if submit_1:
     if uploaded_file is not None:
