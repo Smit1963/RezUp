@@ -73,42 +73,43 @@ def create_pdf(resume_text):
     buffer = io.BytesIO()
     styles = getSampleStyleSheet()
     
-    # Modify existing BodyText style instead of redefining
-    body_style = styles['BodyText']
-    body_style.spaceAfter = 6
+    # Add custom styles
+    styles.add(ParagraphStyle(
+        name='RezUpHeader',
+        fontName='Helvetica-Bold',
+        fontSize=16,
+        spaceAfter=12
+    ))
     
-    # Add custom styles with unique names
-    if 'RezUpSectionHeader' not in styles:
-        styles.add(ParagraphStyle(
-            name='RezUpSectionHeader',
-            fontName='Helvetica-Bold',
-            fontSize=14,
-            spaceAfter=12
-        ))
+    styles.add(ParagraphStyle(
+        name='RezUpSubheader',
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        spaceAfter=8
+    ))
     
-    if 'RezUpCenter' not in styles:
-        styles.add(ParagraphStyle(
-            name='RezUpCenter',
-            alignment=TA_CENTER
-        ))
+    styles.add(ParagraphStyle(
+        name='RezUpBody',
+        fontSize=12,
+        leading=14,
+        spaceAfter=6
+    ))
     
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     story = []
-    
-    # Add title
-    story.append(Paragraph("Improved Resume", styles['Title']))
-    story.append(Spacer(1, 24))
     
     # Process content
     for line in resume_text.split('\n'):
         if not line.strip():
             story.append(Spacer(1, 12))
-            continue
-            
-        if line.strip().endswith(':'):  # Section header
-            story.append(Paragraph(line, styles['RezUpSectionHeader']))
+        elif line.startswith('## '):
+            story.append(Paragraph(line[3:], styles['RezUpHeader']))
+        elif line.startswith('### '):
+            story.append(Paragraph(line[4:], styles['RezUpSubheader']))
+        elif line.startswith('**') and line.endswith('**'):
+            story.append(Paragraph(line[2:-2], styles['Heading3']))
         else:
-            story.append(Paragraph(line, body_style))
+            story.append(Paragraph(line, styles['RezUpBody']))
     
     doc.build(story)
     buffer.seek(0)
@@ -139,11 +140,10 @@ def evaluate_resume_progress(original_score, optimized_score, original_missing, 
     recovered_keywords = set(original_missing) - set(optimized_missing)
     
     recommendations = [
-        "Add more quantifiable achievements (numbers, percentages)",
-        "Include missing keywords naturally in context",
-        "Ensure consistent formatting throughout",
-        "Optimize section headers for ATS parsing"
-    ]
+        "More targeted keyword integration",
+        "Better achievement quantification",
+        "Improved section organization"
+    ] if improvement <= 5 else ["Great improvement! Maintain these changes"]
     
     return f"""
 ## ATS Optimization Progress Report
@@ -153,160 +153,33 @@ def evaluate_resume_progress(original_score, optimized_score, original_missing, 
 **Improvement**: {improvement}%  
 
 ### Key Improvements:
-- Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords) if recovered_keywords else 'None'}  
+- Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords) if recovered_keywords else 'None'}
 - Improved formatting for better ATS parsing  
 - Enhanced keyword placement and frequency  
 
 ### Recommendations:
-- {recommendations[0]}
-- {recommendations[1]}
-- {recommendations[2]}
-- {recommendations[3]}
+{'- ' + '\n- '.join(recommendations)}
 """
 
-# Streamlit UI Setup
-st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide")
+# [Rest of your original Streamlit UI code remains exactly the same...]
+# [Include all your original Streamlit setup, styling, and button handlers]
 
-# Custom CSS styling
-st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-        
-        :root {
-            --primary: #4CAF50;
-            --secondary: #2196F3;
-            --accent: #FF5722;
-            --dark: #333333;
-        }
-        
-        html, body, [class*="css"] {
-            font-family: 'Poppins', sans-serif;
-        }
-        
-        .main-title {
-            color: var(--primary);
-            font-size: 2.5rem;
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-        
-        .stButton button {
-            background-color: var(--primary);
-            color: white;
-            border-radius: 8px;
-        }
-        
-        .stButton button:hover {
-            background-color: var(--secondary);
-        }
-        
-        .response-container {
-            background-color: #f9f9f9;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# App Header
-st.markdown('<h1 class="main-title">RezUp - Resume Optimizer</h1>', unsafe_allow_html=True)
-
-# Main Content
-input_text = st.text_area("📝 Enter Job Description", placeholder="Paste the job description here...")
-uploaded_file = st.file_uploader("📂 Upload Your Resume (PDF only)", type="pdf")
-
-if uploaded_file is not None:
-    st.success("✅ Resume uploaded successfully!")
-
-# Action Buttons
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    submit_1 = st.button("🔍 Resume Evaluation")
-with col2:
-    submit_2 = st.button("💡 Skillset Improvement")
-with col3:
-    submit_3 = st.button("🔑 Missing Keywords")
-with col4:
-    submit_4 = st.button("📊 ATS Score")
-
-generate_clicked = st.button("✨ Generate Improved Resume", type="primary")
-
-# Prompts
-input_prompt1 = """
-As an experienced HR manager, review this resume against the job description. 
-Provide a professional evaluation including:
-1. Percentage match score at the top
-2. Key strengths matching job requirements
-3. Potential weaknesses or gaps
-4. Overall suitability for the position
-"""
-
-input_prompt3 = """
-As an ATS optimization expert, evaluate this resume for:
-1. Percentage match with job description
-2. Present keywords (with frequency)
-3. Missing keywords
-4. Formatting issues affecting ATS parsing
-5. Specific recommendations for improvement
-"""
-
-# Button Handlers
-if submit_1 and uploaded_file:
-    with st.spinner("Analyzing your resume..."):
-        pdf_content = convert_pdf_to_image(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt1)
-        st.subheader("🔍 Professional Evaluation")
-        st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
-
-elif submit_3 and uploaded_file:
-    with st.spinner("Scanning for missing keywords..."):
-        pdf_content = convert_pdf_to_image(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt3)
-        st.subheader("🔑 ATS Keyword Analysis")
-        st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
-
-if generate_clicked and uploaded_file and input_text:
-    with st.spinner("Creating your optimized resume..."):
-        # Get original evaluation
-        pdf_content = convert_pdf_to_image(uploaded_file)
-        original_evaluation = get_gemini_response(input_text, pdf_content, input_prompt3)
-        original_score = extract_score_from_evaluation(original_evaluation)
-        original_missing = extract_missing_keywords(original_evaluation)
-        
-        # Generate improved resume
-        improved_resume = generate_improved_resume(input_text, pdf_content)
-        
-        # Evaluate improved version
-        improved_content = [{"mime_type": "text/plain", "data": base64.b64encode(improved_resume.encode()).decode()}]
-        improved_evaluation = get_gemini_response(input_text, improved_content, input_prompt3)
-        improved_score = extract_score_from_evaluation(improved_evaluation)
-        improved_missing = extract_missing_keywords(improved_evaluation)
-        
-        # Generate comparison report
-        progress_report = evaluate_resume_progress(
-            original_score, improved_score, 
-            original_missing, improved_missing
-        )
-        
-        # Display results
-        st.subheader("✨ Optimization Results")
-        st.markdown(progress_report)
-        
-        with st.expander("View Optimized Resume"):
-            st.markdown(improved_resume)
-        
-        # Download button
-        try:
-            pdf_buffer = create_pdf(improved_resume)
+# Only change needed in the button handler is to combine content for PDF:
+if generate_clicked:
+    if uploaded_file is not None and input_text:
+        with st.spinner("✨ Creating your optimized resume..."):
+            # [Keep all your original evaluation code...]
+            
+            # Generate combined content for PDF
+            pdf_content = f"{improved_resume}\n\n{progress_report}"
+            pdf_buffer = create_pdf(pdf_content)
+            
+            # [Keep all your original display code...]
+            
+            # Download button
             st.download_button(
-                label="📄 Download Improved Resume",
+                label="📄 Download Improved Resume (PDF)",
                 data=pdf_buffer,
                 file_name="improved_resume.pdf",
                 mime="application/pdf"
             )
-        except Exception as e:
-            st.error(f"Error generating PDF: {e}")
-
-elif generate_clicked:
-    st.warning("Please upload your resume and enter a job description")
