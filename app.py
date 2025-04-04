@@ -288,6 +288,18 @@ st.markdown("""
             background-color: #f9f9f9;
             border-left: 4px solid var(--primary);
             margin-top: 1.5rem;
+            color: var(--dark); /* Default text color */
+        }
+
+        /* Style adjustments for dark mode */
+        .streamlit-dark-theme .response-container {
+            background-color: #262730; /* Dark background for dark mode */
+            color: var(--light); /* Light text color for dark mode */
+            border-left-color: var(--secondary);
+        }
+
+        .streamlit-dark-theme .sub-header {
+            color: var(--light); /* Light text for sub-headers in dark mode */
         }
 
         .stAlert {
