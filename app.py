@@ -262,6 +262,28 @@ def display_improvement_report(original_score, optimized_score, recovered_keywor
     </div>
     """, unsafe_allow_html=True)
 
+def get_improvement_report_text(original_score, optimized_score, recovered_keywords):
+    """Generate a plain text improvement report"""
+    improvement = optimized_score - original_score
+    report = f"""
+    Improvement Report
+
+    Original Score: {original_score}%
+    Optimized Score: {optimized_score}%
+    Improvement: +{improvement}%
+
+    Key Improvements:
+    - Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords) if recovered_keywords else 'None'}
+    - Improved formatting for better ATS parsing
+    - Enhanced keyword placement and frequency
+
+    Recommendations:
+    - Add more quantifiable achievements
+    - Include missing keywords naturally
+    - Optimize section headers for ATS
+    """
+    return report
+
 # Streamlit UI Setup
 st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="logo.png")
 
@@ -484,7 +506,7 @@ st.markdown('<p class="tagline">AI that fixes your resume</p>', unsafe_allow_htm
 with st.container():
     st.markdown('<div class="centered">', unsafe_allow_html=True)
     input_text = st.text_area("📝 Enter Job Description", key="input",
-                                    placeholder="Paste the job description you're applying for...")
+                                        placeholder="Paste the job description you're applying for...")
     uploaded_file = st.file_uploader("📂 Upload Your Resume (PDF only)", type="pdf", key="file")
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -699,6 +721,15 @@ if generate_clicked:
                 optimized_score=improved_score,
                 recovered_keywords=list(set(original_missing) - set(improved_missing))
             )
+
+            # Generate and display the plain text improvement report
+            improvement_report_text = get_improvement_report_text(
+                original_score=original_score,
+                optimized_score=improved_score,
+                recovered_keywords=list(set(original_missing) - set(improved_missing))
+            )
+            st.subheader("Plain Text Improvement Report")
+            st.text_area("Improvement Report", improvement_report_text, height=250)
 
             # Download button
             try:
