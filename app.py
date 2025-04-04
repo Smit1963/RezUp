@@ -28,12 +28,12 @@ def convert_pdf_to_image(uploaded_file):
     pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
     page = pdf_document.load_page(0)  # Load the first page
     pix = page.get_pixmap()
-    
+
     img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='JPEG')
     img_byte_arr = img_byte_arr.getvalue()
-    
+
     pdf_parts = [
         {
             "mime_type": "image/jpeg",
@@ -51,7 +51,7 @@ def generate_improved_resume(input_text, pdf_content):
     4. Presents information clearly and professionally
     5. Uses active language and power verbs
     6. Ensures consistent formatting throughout
-    
+
     Format the resume with these sections:
     - Header (Name, Contact Info, LinkedIn)
     - Professional Summary (tailored to the job)
@@ -60,7 +60,7 @@ def generate_improved_resume(input_text, pdf_content):
     - Education
     - Certifications (if any)
     - Projects (if relevant)
-    
+
     Make sure the content is concise, achievement-oriented, and perfectly tailored to the job description.
     Include specific keywords from the job description naturally in context.
     """
@@ -72,7 +72,7 @@ def create_pdf(resume_text):
     """Create PDF using ReportLab with proper style handling"""
     buffer = io.BytesIO()
     styles = getSampleStyleSheet()
-    
+
     # Add custom styles
     styles.add(ParagraphStyle(
         name='RezUpHeader',
@@ -80,24 +80,24 @@ def create_pdf(resume_text):
         fontSize=16,
         spaceAfter=12
     ))
-    
+
     styles.add(ParagraphStyle(
         name='RezUpSubheader',
         fontName='Helvetica-Bold',
         fontSize=14,
         spaceAfter=8
     ))
-    
+
     styles.add(ParagraphStyle(
         name='RezUpBody',
         fontSize=12,
         leading=14,
         spaceAfter=6
     ))
-    
+
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     story = []
-    
+
     # Process content
     for line in resume_text.split('\n'):
         if not line.strip():
@@ -110,7 +110,7 @@ def create_pdf(resume_text):
             story.append(Paragraph(line[2:-2], styles['Heading3']))
         else:
             story.append(Paragraph(line, styles['RezUpBody']))
-    
+
     doc.build(story)
     buffer.seek(0)
     return buffer
@@ -138,19 +138,19 @@ def evaluate_resume_progress(original_score, optimized_score, original_missing, 
     """Generate a progress report showing improvements"""
     improvement = optimized_score - original_score
     recovered_keywords = set(original_missing) - set(optimized_missing)
-    
+
     report = f"""
     ## ATS Optimization Progress Report
-    
+
     **Original Score**: {original_score}%
     **Optimized Score**: {optimized_score}%
     **Improvement**: {improvement}%
-    
+
     ### Key Improvements:
     - Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords)}
     - Improved formatting for better ATS parsing
     - Enhanced keyword placement and frequency
-    
+
     ### Recommendations:
     {'' if improvement > 5 else 'The optimization needs further work. Consider:'}
     {'' if improvement > 5 else '- More targeted keyword integration'}
@@ -162,7 +162,7 @@ def evaluate_resume_progress(original_score, optimized_score, original_missing, 
 def display_improvement_report(original_score, optimized_score, recovered_keywords):
     """Display the improvement report in a styled UI format"""
     improvement = optimized_score - original_score
-    
+
     st.markdown(f"""
     <div style='
         background: linear-gradient(135deg, #f5f7fa 0%, #e4efe9 100%);
@@ -172,7 +172,7 @@ def display_improvement_report(original_score, optimized_score, recovered_keywor
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     '>
         <h2 style='color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;'>🚀 Improvement Report</h2>
-        
+
         <div style='
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -193,7 +193,7 @@ def display_improvement_report(original_score, optimized_score, recovered_keywor
                     color: #e74c3c;
                 '>{original_score}%</div>
             </div>
-            
+
             <div style='
                 background: white;
                 padding: 16px;
@@ -208,7 +208,7 @@ def display_improvement_report(original_score, optimized_score, recovered_keywor
                     color: #2ecc71;
                 '>{optimized_score}%</div>
             </div>
-            
+
             <div style='
                 background: white;
                 padding: 16px;
@@ -224,7 +224,7 @@ def display_improvement_report(original_score, optimized_score, recovered_keywor
                 '>+{improvement}%</div>
             </div>
         </div>
-        
+
         <div style='
             background: white;
             padding: 20px;
@@ -242,7 +242,7 @@ def display_improvement_report(original_score, optimized_score, recovered_keywor
                 <li style='margin-bottom: 8px;'>Enhanced keyword placement and frequency</li>
             </ul>
         </div>
-        
+
         <div style='
             background: white;
             padding: 20px;
@@ -269,7 +269,7 @@ st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_ic
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-        
+
         :root {
             --primary: #4CAF50;
             --secondary: #2196F3;
@@ -279,12 +279,12 @@ st.markdown("""
             --dark: #333333;
             --light: #f8f9fa;
         }
-        
+
         html, body, [class*="css"] {
             font-family: 'Poppins', sans-serif;
             font-size: 18px;
         }
-        
+
         .main-title {
             color: var(--primary);
             font-size: 3.2rem;
@@ -293,7 +293,7 @@ st.markdown("""
             font-weight: 700;
             letter-spacing: -0.5px;
         }
-        
+
         .tagline {
             color: var(--dark);
             font-size: 1.5rem;
@@ -301,14 +301,14 @@ st.markdown("""
             margin-bottom: 2rem;
             font-weight: 400;
         }
-        
+
         .sub-header {
             color: var(--secondary);
             font-size: 2rem;
             margin: 1.5rem 0 1rem;
             font-weight: 600;
         }
-        
+
         .stButton button {
             background-color: var(--primary);
             color: white;
@@ -322,18 +322,18 @@ st.markdown("""
             width: 100%;
             font-weight: 600;
         }
-        
+
         .stButton button:hover {
             background-color: var(--secondary);
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        
+
         .generate-btn-container {
             text-align: center;
             margin: 30px 0;
         }
-        
+
         .generate-btn {
             background-color: var(--skyblue) !important;
             color: white !important;
@@ -349,25 +349,25 @@ st.markdown("""
             display: inline-block !important;
             cursor: pointer !important;
         }
-        
+
         .generate-btn:hover {
             background-color: var(--darkskyblue) !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
         }
-        
+
         .stTextArea textarea {
             min-height: 150px;
             font-size: 18px;
             border-radius: 8px;
             padding: 16px;
         }
-        
+
         .stTextArea label, .stFileUploader label {
             font-size: 18px !important;
             font-weight: 500 !important;
         }
-        
+
         .centered {
             display: flex;
             justify-content: center;
@@ -377,11 +377,11 @@ st.markdown("""
             max-width: 800px;
             margin: 0 auto;
         }
-        
+
         .file-uploader {
             width: 100%;
         }
-        
+
         .success-message {
             color: var(--primary);
             font-weight: 600;
@@ -389,14 +389,14 @@ st.markdown("""
             margin: 1.2rem 0;
             font-size: 20px;
         }
-        
+
         .action-buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 1.2rem;
             margin-top: 2rem;
         }
-        
+
         .response-container {
             font-size: 18px;
             line-height: 1.6;
@@ -406,12 +406,12 @@ st.markdown("""
             border-left: 4px solid var(--primary);
             margin-top: 1.5rem;
         }
-        
+
         .stAlert {
             font-size: 18px;
             padding: 16px;
         }
-        
+
         .progress-bar {
             height: 20px;
             background-color: #e0e0e0;
@@ -419,43 +419,43 @@ st.markdown("""
             margin: 15px 0;
             overflow: hidden;
         }
-        
+
         .progress-fill {
             height: 100%;
             background-color: var(--primary);
             border-radius: 10px;
             transition: width 0.5s;
         }
-        
+
         .score-comparison {
             display: flex;
             justify-content: space-between;
             margin: 20px 0;
         }
-        
+
         .score-box {
             text-align: center;
             padding: 15px;
             border-radius: 8px;
             width: 48%;
         }
-        
+
         .original-score {
             background-color: #ffebee;
             border: 2px solid #ef9a9a;
         }
-        
+
         .optimized-score {
             background-color: #e8f5e9;
             border: 2px solid #a5d6a7;
         }
-        
+
         .score-value {
             font-size: 2.5rem;
             font-weight: 700;
             margin: 10px 0;
         }
-        
+
         @media (max-width: 768px) {
             .action-buttons {
                 grid-template-columns: 1fr;
@@ -483,8 +483,8 @@ st.markdown('<p class="tagline">AI that fixes your resume</p>', unsafe_allow_htm
 # Main Content
 with st.container():
     st.markdown('<div class="centered">', unsafe_allow_html=True)
-    input_text = st.text_area("📝 Enter Job Description", key="input", 
-                             placeholder="Paste the job description you're applying for...")
+    input_text = st.text_area("📝 Enter Job Description", key="input",
+                                    placeholder="Paste the job description you're applying for...")
     uploaded_file = st.file_uploader("📂 Upload Your Resume (PDF only)", type="pdf", key="file")
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -511,7 +511,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # Prompts
 input_prompt1 = """
-As an experienced Technical HR Manager with expertise in data science, AI, and tech fields, review this resume against the job description. 
+As an experienced Technical HR Manager with expertise in data science, AI, and tech fields, review this resume against the job description.
 Provide a professional evaluation of alignment with the role, highlighting:
 1. Key strengths matching the job requirements
 2. Potential weaknesses or gaps
@@ -572,7 +572,7 @@ if submit_1:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt1)
             st.markdown('<h2 class="sub-header">🔍 Professional Evaluation</h2>', unsafe_allow_html=True)
-            
+
             # Extract and display score
             score = extract_score_from_evaluation(response)
             st.markdown(f"""
@@ -581,7 +581,7 @@ if submit_1:
             </div>
             <p style="text-align: center; font-weight: bold;">Current Match: {score}%</p>
             """, unsafe_allow_html=True)
-            
+
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get analysis")
@@ -602,7 +602,7 @@ elif submit_3:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt4)
             st.markdown('<h2 class="sub-header">🔑 Critical Missing Keywords</h2>', unsafe_allow_html=True)
-            
+
             # Extract and display score
             score = extract_score_from_evaluation(response)
             st.markdown(f"""
@@ -611,7 +611,7 @@ elif submit_3:
             </div>
             <p style="text-align: center; font-weight: bold;">Current ATS Match: {score}%</p>
             """, unsafe_allow_html=True)
-            
+
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to check keywords")
@@ -622,7 +622,7 @@ elif submit_4:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt3)
             st.markdown('<h2 class="sub-header">📊 ATS Compatibility Report</h2>', unsafe_allow_html=True)
-            
+
             # Extract and display score
             score = extract_score_from_evaluation(response)
             st.markdown(f"""
@@ -631,7 +631,7 @@ elif submit_4:
             </div>
             <p style="text-align: center; font-weight: bold;">Current ATS Score: {score}%</p>
             """, unsafe_allow_html=True)
-            
+
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get ATS score")
@@ -644,23 +644,23 @@ if generate_clicked:
             original_evaluation = get_gemini_response(input_text, pdf_content, input_prompt3)
             original_score = extract_score_from_evaluation(original_evaluation)
             original_missing = extract_missing_keywords(original_evaluation)
-            
+
             # Generate improved resume
             improved_resume = generate_improved_resume(input_text, pdf_content)
-            
+
             # Evaluate improved version
             improved_content = [{"mime_type": "text/plain", "data": base64.b64encode(improved_resume.encode()).decode()}]
             improved_evaluation = get_gemini_response(input_text, improved_content, input_prompt3)
             improved_score = extract_score_from_evaluation(improved_evaluation)
             improved_missing = extract_missing_keywords(improved_evaluation)
-            
+
             # Generate comparison report
-            progress_report = evaluate_resume_progress(original_score, improved_score, 
-                                                    original_missing, improved_missing)
-            
+            progress_report = evaluate_resume_progress(original_score, improved_score,
+                                                            original_missing, improved_missing)
+
             # Display results
             st.markdown('<h2 class="sub-header">✨ Optimization Results</h2>', unsafe_allow_html=True)
-            
+
             # Score comparison visualization
             st.markdown(f"""
             <div class="score-comparison">
@@ -674,7 +674,7 @@ if generate_clicked:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            
+
             # Improvement percentage
             improvement = improved_score - original_score
             st.markdown(f"""
@@ -682,23 +682,23 @@ if generate_clicked:
                 <h3>Improvement: {improvement}% increase</h3>
             </div>
             """, unsafe_allow_html=True)
-            
+
             with st.expander("📝 Original Resume Evaluation"):
                 st.markdown(f'<div class="response-container">{original_evaluation}</div>', unsafe_allow_html=True)
-            
+
             with st.expander("🆕 Optimized Resume"):
                 st.markdown(f'<div class="response-container">{improved_resume}</div>', unsafe_allow_html=True)
-            
+
             with st.expander("🔍 Optimized Resume Evaluation"):
                 st.markdown(f'<div class="response-container">{improved_evaluation}</div>', unsafe_allow_html=True)
-            
-            # Display the improved UI for progress report - FIXED THIS LINE
+
+            # Display the improved UI for progress report
             display_improvement_report(
                 original_score=original_score,
                 optimized_score=improved_score,
                 recovered_keywords=list(set(original_missing) - set(improved_missing))
-            )
-            
+            ) # Closing the unclosed parenthesis
+
             # Download button
             try:
                 pdf_buffer = create_pdf(improved_resume)
