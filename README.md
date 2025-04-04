@@ -25,10 +25,9 @@ An intelligent resume optimization tool powered by Google's Gemini AI that helps
 ```bash
 git clone https://github.com/yourusername/rezup.git
 cd rezup
-Set up a virtual environment:
 
 2. Set up virtual environment
-bash
+```bash
 Copy
 python -m venv venv
 source venv/bin/activate  # On Windows use `venv\Scripts\activate`
