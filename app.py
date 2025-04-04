@@ -692,11 +692,12 @@ if generate_clicked:
             with st.expander("🔍 Optimized Resume Evaluation"):
                 st.markdown(f'<div class="response-container">{improved_evaluation}</div>', unsafe_allow_html=True)
             
-            # Display the improved UI for progress report
+            # Display the improved UI for progress report - FIXED THIS LINE
             display_improvement_report(
                 original_score=original_score,
                 optimized_score=improved_score,
                 recovered_keywords=list(set(original_missing) - set(improved_missing))
+            )
             
             # Download button
             try:
