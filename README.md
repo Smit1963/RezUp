@@ -27,6 +27,7 @@ git clone https://github.com/yourusername/rezup.git
 cd rezup
 Set up a virtual environment:
 
+2. Set up virtual environment
 bash
 Copy
 python -m venv venv
