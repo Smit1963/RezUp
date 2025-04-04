@@ -656,7 +656,7 @@ if generate_clicked:
 
             # Generate comparison report
             progress_report = evaluate_resume_progress(original_score, improved_score,
-                                                            original_missing, improved_missing)
+                                                        original_missing, improved_missing)
 
             # Display results
             st.markdown('<h2 class="sub-header">✨ Optimization Results</h2>', unsafe_allow_html=True)
@@ -676,7 +676,6 @@ if generate_clicked:
             """, unsafe_allow_html=True)
 
             # Improvement percentage
-            improvement = improved_score - original_score
             st.markdown(f"""
             <div style="text-align: center; margin: 20px 0;">
                 <h3>Improvement: {improvement}% increase</h3>
@@ -697,7 +696,7 @@ if generate_clicked:
                 original_score=original_score,
                 optimized_score=improved_score,
                 recovered_keywords=list(set(original_missing) - set(improved_missing))
-            ) # Closing the unclosed parenthesis
+            )
 
             # Download button
             try:
