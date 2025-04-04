@@ -186,8 +186,8 @@ st.markdown("""
         }
 
         /* Style adjustment for dark mode */
-        .streamlit-dark-theme .tagline {
-            color: var(--light); /* Light text for tagline in dark mode */
+        .streamlit-dark-theme p.tagline { /* Increased specificity */
+            color: var(--light) !important; /* Added !important */
         }
 
         .sub-header {
