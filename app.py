@@ -5,6 +5,7 @@ import fitz  # PyMuPDF
 import io
 import base64
 import os
+import re
 from dotenv import load_dotenv
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -44,21 +45,24 @@ def convert_pdf_to_image(uploaded_file):
 def generate_improved_resume(input_text, pdf_content):
     prompt = """
     Based on the job description and current resume, generate an improved resume that:
-    1. Incorporates all missing keywords and skills
-    2. Maintains the original structure but enhances content
-    3. Optimizes for ATS systems
+    1. Incorporates all missing keywords and skills from the job description
+    2. Maintains the original structure but enhances content with quantifiable achievements
+    3. Optimizes for ATS systems with proper keyword placement
     4. Presents information clearly and professionally
+    5. Uses active language and power verbs
+    6. Ensures consistent formatting throughout
     
     Format the resume with these sections:
     - Header (Name, Contact Info, LinkedIn)
-    - Professional Summary
-    - Technical Skills (categorized)
-    - Work Experience (with quantified achievements)
+    - Professional Summary (tailored to the job)
+    - Technical Skills (categorized and matching job requirements)
+    - Work Experience (with quantified achievements using numbers/percentages)
     - Education
     - Certifications (if any)
     - Projects (if relevant)
     
-    Make sure the content is concise, achievement-oriented, and tailored to the job description.
+    Make sure the content is concise, achievement-oriented, and perfectly tailored to the job description.
+    Include specific keywords from the job description naturally in context.
     """
     model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content([input_text, pdf_content[0], prompt])
@@ -109,6 +113,50 @@ def create_pdf(resume_text):
     doc.build(story)
     buffer.seek(0)
     return buffer
+
+def extract_score_from_evaluation(evaluation_text):
+    """Extract the percentage score from evaluation text"""
+    match = re.search(r'(\d{1,3})%', evaluation_text)
+    return int(match.group(1)) if match else 0
+
+def extract_missing_keywords(evaluation_text):
+    """Extract missing keywords from evaluation text"""
+    lines = evaluation_text.split('\n')
+    keywords = []
+    in_section = False
+    for line in lines:
+        if "missing keywords" in line.lower():
+            in_section = True
+        elif in_section and line.strip().startswith('-'):
+            keywords.append(line.strip()[1:].strip())
+        elif in_section and not line.strip():
+            break
+    return keywords
+
+def evaluate_resume_progress(original_score, optimized_score, original_missing, optimized_missing):
+    """Generate a progress report showing improvements"""
+    improvement = optimized_score - original_score
+    recovered_keywords = set(original_missing) - set(optimized_missing)
+    
+    report = f"""
+    ## ATS Optimization Progress Report
+    
+    **Original Score**: {original_score}%
+    **Optimized Score**: {optimized_score}%
+    **Improvement**: {improvement}%
+    
+    ### Key Improvements:
+    - Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords)}
+    - Improved formatting for better ATS parsing
+    - Enhanced keyword placement and frequency
+    
+    ### Recommendations:
+    {'' if improvement > 5 else 'The optimization needs further work. Consider:'}
+    {'' if improvement > 5 else '- More targeted keyword integration'}
+    {'' if improvement > 5 else '- Better achievement quantification'}
+    {'' if improvement > 5 else '- Improved section organization'}
+    """
+    return report
 
 # Streamlit UI Setup
 st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="logo.png")
@@ -260,6 +308,50 @@ st.markdown("""
             padding: 16px;
         }
         
+        .progress-bar {
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary);
+            border-radius: 10px;
+            transition: width 0.5s;
+        }
+        
+        .score-comparison {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+        
+        .score-box {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            width: 48%;
+        }
+        
+        .original-score {
+            background-color: #ffebee;
+            border: 2px solid #ef9a9a;
+        }
+        
+        .optimized-score {
+            background-color: #e8f5e9;
+            border: 2px solid #a5d6a7;
+        }
+        
+        .score-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
         @media (max-width: 768px) {
             .action-buttons {
                 grid-template-columns: 1fr;
@@ -268,6 +360,13 @@ st.markdown("""
                 width: 100% !important;
                 font-size: 28px !important;
                 padding: 16px 24px !important;
+            }
+            .score-comparison {
+                flex-direction: column;
+            }
+            .score-box {
+                width: 100%;
+                margin-bottom: 15px;
             }
         }
     </style>
@@ -313,6 +412,7 @@ Provide a professional evaluation of alignment with the role, highlighting:
 1. Key strengths matching the job requirements
 2. Potential weaknesses or gaps
 3. Overall suitability for the position
+Include a percentage match score at the top (e.g., "Current match: 65%").
 """
 
 input_prompt2 = """
@@ -326,10 +426,30 @@ As a career development coach specializing in tech fields, analyze this resume a
 input_prompt3 = """
 As an ATS optimization expert, evaluate this resume for:
 1. Percentage match with the job description (show as % at top)
-2. List of missing keywords from the resume
-3. Critical hard skills that are absent
-4. Final recommendations for improvement
-Format clearly with headings for each section.
+2. List of present keywords from the job description (with frequency)
+3. List of missing keywords from the job description
+4. Formatting issues that might affect ATS parsing
+5. Final recommendations for improvement
+Format clearly with headings for each section and provide specific metrics.
+Example format:
+Current ATS Match: 65%
+
+Present Keywords:
+- Python (3 mentions)
+- Machine Learning (2 mentions)
+
+Missing Keywords:
+- TensorFlow
+- Data Pipelines
+
+Formatting Issues:
+- Missing section headers
+- Inconsistent bullet points
+
+Recommendations:
+1. Add missing keywords naturally in context
+2. Standardize formatting
+3. Quantify achievements
 """
 
 input_prompt4 = """
@@ -338,6 +458,7 @@ As an ATS specialist, identify:
 2. Which job requirements aren't addressed
 3. Suggested additions to improve ATS ranking
 Present in a bullet-point list with priority indicators (High/Medium/Low).
+Include a percentage score at the top (e.g., "Current ATS match: 65%").
 """
 
 # Button Handlers
@@ -347,6 +468,16 @@ if submit_1:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt1)
             st.markdown('<h2 class="sub-header">🔍 Professional Evaluation</h2>', unsafe_allow_html=True)
+            
+            # Extract and display score
+            score = extract_score_from_evaluation(response)
+            st.markdown(f"""
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {score}%"></div>
+            </div>
+            <p style="text-align: center; font-weight: bold;">Current Match: {score}%</p>
+            """, unsafe_allow_html=True)
+            
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get analysis")
@@ -367,6 +498,16 @@ elif submit_3:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt4)
             st.markdown('<h2 class="sub-header">🔑 Critical Missing Keywords</h2>', unsafe_allow_html=True)
+            
+            # Extract and display score
+            score = extract_score_from_evaluation(response)
+            st.markdown(f"""
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {score}%"></div>
+            </div>
+            <p style="text-align: center; font-weight: bold;">Current ATS Match: {score}%</p>
+            """, unsafe_allow_html=True)
+            
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to check keywords")
@@ -377,19 +518,80 @@ elif submit_4:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt3)
             st.markdown('<h2 class="sub-header">📊 ATS Compatibility Report</h2>', unsafe_allow_html=True)
+            
+            # Extract and display score
+            score = extract_score_from_evaluation(response)
+            st.markdown(f"""
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {score}%"></div>
+            </div>
+            <p style="text-align: center; font-weight: bold;">Current ATS Score: {score}%</p>
+            """, unsafe_allow_html=True)
+            
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get ATS score")
 
 if generate_clicked:
-    if uploaded_file is not None:
+    if uploaded_file is not None and input_text:
         with st.spinner("✨ Creating your optimized resume..."):
+            # First get original evaluation
             pdf_content = convert_pdf_to_image(uploaded_file)
+            original_evaluation = get_gemini_response(input_text, pdf_content, input_prompt3)
+            original_score = extract_score_from_evaluation(original_evaluation)
+            original_missing = extract_missing_keywords(original_evaluation)
+            
+            # Generate improved resume
             improved_resume = generate_improved_resume(input_text, pdf_content)
             
-            st.markdown('<h2 class="sub-header">✨ Optimized Resume</h2>', unsafe_allow_html=True)
-            st.markdown(f'<div class="response-container">{improved_resume}</div>', unsafe_allow_html=True)
+            # Evaluate improved version
+            improved_content = [{"mime_type": "text/plain", "data": base64.b64encode(improved_resume.encode()).decode()}]
+            improved_evaluation = get_gemini_response(input_text, improved_content, input_prompt3)
+            improved_score = extract_score_from_evaluation(improved_evaluation)
+            improved_missing = extract_missing_keywords(improved_evaluation)
             
+            # Generate comparison report
+            progress_report = evaluate_resume_progress(original_score, improved_score, 
+                                                    original_missing, improved_missing)
+            
+            # Display results
+            st.markdown('<h2 class="sub-header">✨ Optimization Results</h2>', unsafe_allow_html=True)
+            
+            # Score comparison visualization
+            st.markdown(f"""
+            <div class="score-comparison">
+                <div class="score-box original-score">
+                    <h3>Original Score</h3>
+                    <div class="score-value">{original_score}%</div>
+                </div>
+                <div class="score-box optimized-score">
+                    <h3>Optimized Score</h3>
+                    <div class="score-value">{improved_score}%</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Improvement percentage
+            improvement = improved_score - original_score
+            st.markdown(f"""
+            <div style="text-align: center; margin: 20px 0;">
+                <h3>Improvement: {improvement}% increase</h3>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.expander("📝 Original Resume Evaluation"):
+                st.markdown(f'<div class="response-container">{original_evaluation}</div>', unsafe_allow_html=True)
+            
+            with st.expander("🆕 Optimized Resume"):
+                st.markdown(f'<div class="response-container">{improved_resume}</div>', unsafe_allow_html=True)
+            
+            with st.expander("🔍 Optimized Resume Evaluation"):
+                st.markdown(f'<div class="response-container">{improved_evaluation}</div>', unsafe_allow_html=True)
+            
+            st.markdown('<h3 class="sub-header">📈 Improvement Report</h3>', unsafe_allow_html=True)
+            st.markdown(f'<div class="response-container">{progress_report}</div>', unsafe_allow_html=True)
+            
+            # Download button
             try:
                 pdf_buffer = create_pdf(improved_resume)
                 st.download_button(
@@ -403,6 +605,7 @@ if generate_clicked:
                 )
             except Exception as e:
                 st.error(f"Error generating PDF: {str(e)}")
-                st.info("Please try again or contact support if the problem persists.")
+    elif not input_text:
+        st.warning("Please enter a job description to optimize your resume")
     else:
         st.warning("Please upload your resume to generate an improved version")
