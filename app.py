@@ -6,16 +6,228 @@ import io
 import base64
 import os
 import re
+import spacy
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
 from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.lib.enums import TA_CENTER
+import nltk
+from nltk.corpus import stopwords
+from collections import defaultdict
+
+# Download NLTK data
+nltk.download('stopwords')
+nltk.download('punkt')
 
 # Load environment variables
 load_dotenv()
 
 # Configure Google API key
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+# Load English language model for spaCy
+try:
+    nlp = spacy.load("en_core_web_lg")
+except:
+    import subprocess
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_lg"])
+    nlp = spacy.load("en_core_web_lg")
+
+# ATS-specific rules and configurations
+ATS_CONFIG = {
+    "required_sections": ["experience", "education", "skills"],
+    "section_order_preference": ["contact", "summary", "skills", "experience", "education"],
+    "avoid_elements": ["tables", "images", "headers/footers"],
+    "font_penalties": {
+        "uncommon_fonts": -10,
+        "size_variations": -5
+    },
+    "keyword_position_weights": {
+        "summary": 1.5,
+        "skills": 1.3,
+        "experience": 1.2,
+        "education": 1.0,
+        "other": 0.8
+    }
+}
+
+# Industry-specific keyword libraries (simplified example)
+INDUSTRY_KEYWORDS = {
+    "tech": ["python", "machine learning", "aws", "docker", "kubernetes"],
+    "healthcare": ["patient care", "HIPAA", "EMR", "clinical", "CPR"],
+    "finance": ["financial analysis", "Excel", "modeling", "GAAP", "forecasting"]
+}
+
+class ResumeAnalyzer:
+    def __init__(self):
+        self.stop_words = set(stopwords.words('english'))
+        self.ats_keyword_db = self._load_ats_keywords()
+
+    def _load_ats_keywords(self):
+        """Load ATS keywords database (simplified example)"""
+        return {
+            "workday": ["achieved", "managed", "developed", "implemented"],
+            "taleo": ["skills", "experience", "education", "certifications"],
+            "greenhouse": ["collaborated", "led", "improved", "optimized"]
+        }
+
+    def parse_resume(self, text):
+        """Parse resume text into structured data"""
+        doc = nlp(text)
+
+        # Extract entities
+        entities = {
+            "skills": [],
+            "companies": [],
+            "job_titles": [],
+            "dates": [],
+            "education": []
+        }
+
+        for ent in doc.ents:
+            if ent.label_ == "ORG":
+                entities["companies"].append(ent.text)
+            elif ent.label_ == "DATE":
+                entities["dates"].append(ent.text)
+
+        # Simple section detection (would be more sophisticated in production)
+        sections = {}
+        current_section = None
+        for line in text.split('\n'):
+            line = line.strip()
+            if line.endswith(':'):
+                current_section = line[:-1].lower()
+                sections[current_section] = []
+            elif current_section:
+                sections[current_section].append(line)
+
+        return {
+            "entities": entities,
+            "sections": sections,
+            "raw_text": text
+        }
+
+    def calculate_ats_score(self, resume_data, job_description):
+        """Calculate comprehensive ATS score"""
+        scores = {
+            "keyword": self._keyword_score(resume_data, job_description),
+            "section": self._section_score(resume_data),
+            "format": self._format_score(resume_data),
+            "experience": self._experience_match_score(resume_data, job_description)
+        }
+
+        # Weighted total score
+        total_score = (
+            scores["keyword"] * 0.4 +
+            scores["section"] * 0.3 +
+            scores["format"] * 0.2 +
+            scores["experience"] * 0.1
+        )
+
+        return {
+            "total_score": min(100, int(total_score * 100)),  # Convert to percentage
+            "component_scores": scores,
+            "missing_keywords": self._identify_missing_keywords(resume_data, job_description),
+            "format_issues": self._identify_format_issues(resume_data)
+        }
+
+    def _keyword_score(self, resume_data, job_description):
+        """Calculate keyword matching score"""
+        # Extract keywords from job description
+        job_keywords = self._extract_keywords(job_description)
+
+        # Extract keywords from resume
+        resume_keywords = defaultdict(int)
+        for section, content in resume_data["sections"].items():
+            section_text = ' '.join(content)
+            keywords = self._extract_keywords(section_text)
+            weight = ATS_CONFIG["keyword_position_weights"].get(section, 1.0)
+            for kw in keywords:
+                resume_keywords[kw] += weight
+
+        # Calculate match
+        matched = 0
+        for kw in job_keywords:
+            if kw in resume_keywords:
+                matched += resume_keywords[kw]
+
+        return matched / len(job_keywords) if job_keywords else 0
+
+    def _section_score(self, resume_data):
+        """Score based on resume sections"""
+        score = 0
+        present_sections = set(resume_data["sections"].keys())
+
+        # Check required sections
+        for req in ATS_CONFIG["required_sections"]:
+            if req in present_sections:
+                score += 0.3  # 30% of score for required sections
+
+        # Check section order
+        ideal_order = ATS_CONFIG["section_order_preference"]
+        actual_order = [s for s in ideal_order if s in present_sections]
+        if actual_order == ideal_order[:len(actual_order)]:
+            score += 0.2  # 20% for proper order
+
+        return score
+
+    def _format_score(self, resume_data):
+        """Score based on formatting"""
+        # In a real app, this would analyze PDF structure
+        # Here we just check for common issues in text
+        text = resume_data["raw_text"].lower()
+        penalties = 0
+
+        # Check for tables
+        if "table" in text:
+            penalties += ATS_CONFIG["font_penalties"]["uncommon_fonts"]
+
+        return max(0, 1 - (penalties / 100))
+
+    def _experience_match_score(self, resume_data, job_description):
+        """Score based on experience matching"""
+        # Simple implementation - would use more sophisticated matching in production
+        job_doc = nlp(job_description.lower())
+        resume_doc = nlp(resume_data["raw_text"].lower())
+
+        return job_doc.similarity(resume_doc)
+
+    def _extract_keywords(self, text):
+        """Extract keywords from text"""
+        doc = nlp(text.lower())
+        keywords = []
+
+        for token in doc:
+            if (token.is_alpha and not token.is_stop and
+                    not token.is_punct and len(token.text) > 2):
+                keywords.append(token.lemma_)
+
+        return list(set(keywords))  # Remove duplicates
+
+    def _identify_missing_keywords(self, resume_data, job_description):
+        """Identify keywords missing from resume"""
+        resume_keywords = set(self._extract_keywords(resume_data["raw_text"]))
+        job_keywords = set(self._extract_keywords(job_description))
+
+        return list(job_keywords - resume_keywords)
+
+    def _identify_format_issues(self, resume_data):
+        """Identify potential formatting issues"""
+        issues = []
+        text = resume_data["raw_text"].lower()
+
+        if "table" in text:
+            issues.append("Avoid using tables - may not parse correctly in ATS")
+
+        return issues
+
+# Initialize analyzer
+analyzer = ResumeAnalyzer()
 
 def get_gemini_response(input_text, pdf_content, prompt):
     model = genai.GenerativeModel("gemini-1.5-flash")
@@ -40,30 +252,42 @@ def convert_pdf_to_image(uploaded_file):
     ]
     return pdf_parts
 
-def generate_improved_resume(input_text, pdf_content):
-    prompt = """
-    Based on the job description and current resume, generate an improved resume that:
-    1. Incorporates all missing keywords and skills from the job description
-    2. Maintains the original structure but enhances content with quantifiable achievements
-    3. Optimizes for ATS systems with proper keyword placement
-    4. Presents information clearly and professionally
-    5. Uses active language and power verbs
-    6. Ensures consistent formatting throughout
+def extract_text_from_pdf(uploaded_file):
+    """Extract text from PDF using PyMuPDF"""
+    pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+    text = ""
+    for page in pdf_document:
+        text += page.get_text()
+    return text
 
-    Format the resume with these sections:
-    - Header (Name, Contact Info, LinkedIn)
-    - Professional Summary (tailored to the job)
-    - Technical Skills (categorized and matching job requirements)
-    - Work Experience (with quantified achievements using numbers/percentages)
+def generate_improved_resume(resume_text, job_description, analysis_results):
+    prompt = f"""
+    Based on the job description and current resume analysis, generate an improved resume that:
+    1. Incorporates these missing keywords: {analysis_results['missing_keywords']}
+    2. Addresses these format issues: {analysis_results['format_issues']}
+    3. Scores {analysis_results['total_score']}% but should score at least 85%
+    4. Follows ATS best practices:
+        - Uses standard section headers
+        - Avoids tables and graphics
+        - Uses common fonts
+        - Includes quantifiable achievements
+
+    Job Description: {job_description}
+
+    Current Resume: {resume_text}
+
+    Generate the improved resume with these sections:
+    - Header (Name, Contact Info)
+    - Professional Summary (tailored to job)
+    - Skills (categorized and matching job)
+    - Work Experience (with quantifiable achievements)
     - Education
-    - Certifications (if any)
-    - Projects (if relevant)
+    - Certifications (if relevant)
 
-    Make sure the content is concise, achievement-oriented, and perfectly tailored to the job description.
-    Include specific keywords from the job description naturally in context.
+    Make the resume ATS-optimized while keeping it human-friendly.
     """
     model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content([input_text, pdf_content[0], prompt])
+    response = model.generate_content(prompt)
     return response.text
 
 def create_pdf(resume_text):
@@ -71,326 +295,83 @@ def create_pdf(resume_text):
     buffer = io.BytesIO()
     styles = getSampleStyleSheet()
 
+    # Modify existing BodyText style
+    body_style = styles['BodyText']
+    body_style.spaceAfter = 6
+
     # Add custom styles
-    styles.add(ParagraphStyle(
-        name='RezUpHeader',
-        fontName='Helvetica-Bold',
-        fontSize=16,
-        spaceAfter=12
-    ))
+    if 'RezUpSectionHeader' not in styles:
+        styles.add(ParagraphStyle(
+            name='RezUpSectionHeader',
+            fontName='Helvetica-Bold',
+            fontSize=14,
+            spaceAfter=12
+        ))
 
-    styles.add(ParagraphStyle(
-        name='RezUpSubheader',
-        fontName='Helvetica-Bold',
-        fontSize=14,
-        spaceAfter=8
-    ))
-
-    styles.add(ParagraphStyle(
-        name='RezUpBody',
-        fontSize=12,
-        leading=14,
-        spaceAfter=6
-    ))
+    if 'RezUpCenter' not in styles:
+        styles.add(ParagraphStyle(
+            name='RezUpCenter',
+            alignment=TA_CENTER
+        ))
 
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     story = []
+
+    # Add title
+    story.append(Paragraph("Optimized Resume", styles['Title']))
+    story.append(Spacer(1, 24))
 
     # Process content
     for line in resume_text.split('\n'):
         if not line.strip():
             story.append(Spacer(1, 12))
-        elif line.startswith('## '):
-            story.append(Paragraph(line[3:], styles['RezUpHeader']))
-        elif line.startswith('### '):
-            story.append(Paragraph(line[4:], styles['RezUpSubheader']))
-        elif line.startswith('**') and line.endswith('**'):
-            story.append(Paragraph(line[2:-2], styles['Heading3']))
+            continue
+
+        if line.strip().endswith(':'):  # Section header
+            story.append(Paragraph(line, styles['RezUpSectionHeader']))
         else:
-            story.append(Paragraph(line, styles['RezUpBody']))
+            story.append(Paragraph(line, body_style))
 
     doc.build(story)
     buffer.seek(0)
     return buffer
 
-def extract_score_from_evaluation(evaluation_text):
-    """Extract the percentage score from evaluation text"""
-    match = re.search(r'(\d{1,3})%', evaluation_text)
-    return int(match.group(1)) if match else 0
-
-def extract_missing_keywords(evaluation_text):
-    """Extract missing keywords from evaluation text"""
-    lines = evaluation_text.split('\n')
-    keywords = []
-    in_section = False
-    for line in lines:
-        if "missing keywords" in line.lower():
-            in_section = True
-        elif in_section and line.strip().startswith('-'):
-            keywords.append(line.strip()[1:].strip())
-        elif in_section and not line.strip():
-            break
-    return keywords
-
-def evaluate_resume_progress(original_score, optimized_score, original_missing, optimized_missing):
-    """Generate a progress report showing improvements"""
-    improvement = optimized_score - original_score
-    recovered_keywords = set(original_missing) - set(optimized_missing)
-
-    report = f"""
-    ## ATS Optimization Progress Report
-
-    **Original Score**: {original_score}%
-    **Optimized Score**: {optimized_score}%
-    **Improvement**: {improvement}%
-
-    ### Key Improvements:
-    - Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords)}
-    - Improved formatting for better ATS parsing
-    - Enhanced keyword placement and frequency
-
-    ### Recommendations:
-    {'' if improvement > 5 else 'The optimization needs further work. Consider:'}
-    {'' if improvement > 5 else '- More targeted keyword integration'}
-    {'' if improvement > 5 else '- Better achievement quantification'}
-    {'' if improvement > 5 else '- Improved section organization'}
-    """
-    return report
-
-def get_improvement_report_text(original_score, optimized_score, recovered_keywords):
-    """Generate improvement report details for UI display"""
-    improvement = optimized_score - original_score
-    report_data = {
-        "original_score": original_score,
-        "optimized_score": optimized_score,
-        "improvement": improvement,
-        "recovered_keywords": recovered_keywords
-    }
-    return report_data
-
 # Streamlit UI Setup
-st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="logo.png")
+st.set_page_config(page_title="RezUp Pro - Advanced Resume Optimizer", layout="wide")
 
-# Custom CSS styling
+# Custom CSS styling (same as before)
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-
-        :root {
-            --primary: #4CAF50;
-            --secondary: #2196F3;
-            --accent: #FF5722;
-            --skyblue: #87CEEB;
-            --darkskyblue: #4682B4;
-            --dark: #333333;
-            --light: #f8f9fa;
-        }
-
-        html, body, [class*="css"] {
-            font-family: 'Poppins', sans-serif;
-            font-size: 18px;
-        }
-
-        .main-title {
-            color: var(--primary);
-            font-size: 3.2rem;
-            text-align: center;
-            margin-bottom: 0.5rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .tagline {
-            color: var(--dark);
-            font-size: 1.5rem;
-            text-align: center;
-            margin-bottom: 2rem;
-            font-weight: 400;
-        }
-
-        .sub-header {
-            color: var(--secondary);
-            font-size: 2rem;
-            margin: 1.5rem 0 1rem;
-            font-weight: 600;
-        }
-
-        .stButton button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 14px 24px;
-            text-align: center;
-            font-size: 18px;
-            margin: 8px 0;
+        /* Previous CSS styles here */
+        .score-details {
+            background-color: #f5f5f5;
             border-radius: 8px;
-            transition: all 0.3s;
-            width: 100%;
-            font-weight: 600;
-        }
-
-        .stButton button:hover {
-            background-color: var(--secondary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-
-        .generate-btn-container {
-            text-align: center;
-            margin: 30px 0;
-        }
-
-        .generate-btn {
-            background-color: var(--skyblue) !important;
-            color: white !important;
-            border: none !important;
-            padding: 20px 32px !important;
-            text-align: center !important;
-            font-size: 36px !important;
-            margin: 0 auto !important;
-            border-radius: 12px !important;
-            transition: all 0.3s !important;
-            width: 80% !important;
-            font-weight: 700 !important;
-            display: inline-block !important;
-            cursor: pointer !important;
-        }
-
-        .generate-btn:hover {
-            background-color: var(--darkskyblue) !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
-        }
-
-        .stTextArea textarea {
-            min-height: 150px;
-            font-size: 18px;
-            border-radius: 8px;
-            padding: 16px;
-        }
-
-        .stTextArea label, .stFileUploader label {
-            font-size: 18px !important;
-            font-weight: 500 !important;
-        }
-
-        .centered {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            gap: 1.5rem;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .file-uploader {
-            width: 100%;
-        }
-
-        .success-message {
-            color: var(--primary);
-            font-weight: 600;
-            text-align: center;
-            margin: 1.2rem 0;
-            font-size: 20px;
-        }
-
-        .action-buttons {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1.2rem;
-            margin-top: 2rem;
-        }
-
-        .response-container {
-            font-size: 18px;
-            line-height: 1.6;
-            padding: 1.5rem;
-            border-radius: 10px;
-            background-color: #f9f9f9;
-            border-left: 4px solid var(--primary);
-            margin-top: 1.5rem;
-        }
-
-        .stAlert {
-            font-size: 18px;
-            padding: 16px;
-        }
-
-        .progress-bar {
-            height: 20px;
-            background-color: #e0e0e0;
-            border-radius: 10px;
-            margin: 15px 0;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background-color: var(--primary);
-            border-radius: 10px;
-            transition: width 0.5s;
-        }
-
-        .score-comparison {
-            display: flex;
-            justify-content: space-between;
-            margin: 20px 0;
-        }
-
-        .score-box {
-            text-align: center;
             padding: 15px;
-            border-radius: 8px;
-            width: 48%;
-        }
-
-        .original-score {
-            background-color: #ffebee;
-            border: 2px solid #ef9a9a;
-        }
-
-        .optimized-score {
-            background-color: #e8f5e9;
-            border: 2px solid #a5d6a7;
-        }
-
-        .score-value {
-            font-size: 2.5rem;
-            font-weight: 700;
             margin: 10px 0;
         }
-
-        @media (max-width: 768px) {
-            .action-buttons {
-                grid-template-columns: 1fr;
-            }
-            .generate-btn {
-                width: 100% !important;
-                font-size: 28px !important;
-                padding: 16px 24px !important;
-            }
-            .score-comparison {
-                flex-direction: column;
-            }
-            .score-box {
-                width: 100%;
-                margin-bottom: 15px;
-            }
+        .keyword-chip {
+            display: inline-block;
+            background-color: #e3f2fd;
+            padding: 4px 8px;
+            border-radius: 16px;
+            margin: 4px;
+            font-size: 14px;
+        }
+        .missing-keyword {
+            background-color: #ffebee;
         }
     </style>
 """, unsafe_allow_html=True)
 
 # App Header
-st.markdown('<h1 class="main-title">☄️RezUp! Till You Make It</h1>', unsafe_allow_html=True)
-st.markdown('<p class="tagline">AI that fixes your resume</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">☄️RezUp Pro</h1>', unsafe_allow_html=True)
+st.markdown('<p class="tagline">Advanced ATS Resume Optimization</p>', unsafe_allow_html=True)
 
 # Main Content
 with st.container():
     st.markdown('<div class="centered">', unsafe_allow_html=True)
     input_text = st.text_area("📝 Enter Job Description", key="input",
-                                        placeholder="Paste the job description you're applying for...")
+                                    placeholder="Paste the job description you're applying for...")
     uploaded_file = st.file_uploader("📂 Upload Your Resume (PDF only)", type="pdf", key="file")
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -415,205 +396,185 @@ st.markdown('<div class="generate-btn-container">', unsafe_allow_html=True)
 generate_clicked = st.button("✨ Generate Improved Resume", key="generate")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Prompts
-input_prompt1 = """
-As an experienced Technical HR Manager with expertise in data science, AI, and tech fields, review this resume against the job description.
-Provide a professional evaluation of alignment with the role, highlighting:
-1. Key strengths matching the job requirements
-2. Potential weaknesses or gaps
-3. Overall suitability for the position
-Include a percentage match score at the top (e.g., "Current match: 65%").
-"""
-
-input_prompt2 = """
-As a career development coach specializing in tech fields, analyze this resume and job description to:
-1. Identify skill gaps between the candidate and job requirements
-2. Recommend specific skills to develop
-3. Suggest learning resources or pathways
-4. Provide actionable improvement steps
-"""
-
-input_prompt3 = """
-As an ATS optimization expert, evaluate this resume for:
-1. Percentage match with the job description (show as % at top)
-2. List of present keywords from the job description (with frequency)
-3. List of missing keywords from the job description
-4. Formatting issues that might affect ATS parsing
-5. Final recommendations for improvement
-Format clearly with headings for each section and provide specific metrics.
-Example format:
-Current ATS Match: 65%
-
-Present Keywords:
-- Python (3 mentions)
-- Machine Learning (2 mentions)
-
-Missing Keywords:
-- TensorFlow
-- Data Pipelines
-
-Formatting Issues:
-- Missing section headers
-- Inconsistent bullet points
-
-Recommendations:
-1. Add missing keywords naturally in context
-2. Standardize formatting
-3. Quantify achievements
-"""
-
-input_prompt4 = """
-As an ATS specialist, identify:
-1. The most important missing keywords from the resume
-2. Which job requirements aren't addressed
-3. Suggested additions to improve ATS ranking
-Present in a bullet-point list with priority indicators (High/Medium/Low).
-Include a percentage score at the top (e.g., "Current ATS match: 65%").
-"""
-
 # Button Handlers
-if submit_1:
-    if uploaded_file is not None:
-        with st.spinner("🔍 Analyzing your resume..."):
-            pdf_content = convert_pdf_to_image(uploaded_file)
-            response = get_gemini_response(input_text, pdf_content, input_prompt1)
-            st.markdown('<h2 class="sub-header">🔍 Professional Evaluation</h2>', unsafe_allow_html=True)
-
-            # Extract and display score
-            score = extract_score_from_evaluation(response)
-            st.markdown(f"""
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: {score}%"></div>
-            </div>
-            <p style="text-align: center; font-weight: bold;">Current Match: {score}%</p>
-            """, unsafe_allow_html=True)
-
-            st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
-    else:
-        st.warning("Please upload your resume to get analysis")
-
-elif submit_2:
-    if uploaded_file is not None:
-        with st.spinner("💡 Generating improvement suggestions..."):
-            pdf_content = convert_pdf_to_image(uploaded_file)
-            response = get_gemini_response(input_text, pdf_content, input_prompt2)
-            st.markdown('<h2 class="sub-header">💡 Skillset Development Plan</h2>', unsafe_allow_html=True)
-            st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
-    else:
-        st.warning("Please upload your resume to get suggestions")
-
-elif submit_3:
-    if uploaded_file is not None:
-        with st.spinner("🔍 Scanning for missing keywords..."):
-            pdf_content = convert_pdf_to_image(uploaded_file)
-            response = get_gemini_response(input_text, pdf_content, input_prompt4)
-            st.markdown('<h2 class="sub-header">🔑 Critical Missing Keywords</h2>', unsafe_allow_html=True)
-
-            # Extract and display score
-            score = extract_score_from_evaluation(response)
-            st.markdown(f"""
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: {score}%"></div>
-            </div>
-            <p style="text-align: center; font-weight: bold;">Current ATS Match: {score}%</p>
-            """, unsafe_allow_html=True)
-
-            st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
-    else:
-        st.warning("Please upload your resume to check keywords")
-
-elif submit_4:
-    if uploaded_file is not None:
-        with st.spinner("📊 Calculating ATS score..."):
-            pdf_content = convert_pdf_to_image(uploaded_file)
-            response = get_gemini_response(input_text, pdf_content, input_prompt3)
-            st.markdown('<h2 class="sub-header">📊 ATS Compatibility Report</h2>', unsafe_allow_html=True)
-
-            # Extract and display score
-            score = extract_score_from_evaluation(response)
-            st.markdown(f"""
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: {score}%"></div>
-            </div>
-            <p style="text-align: center; font-weight: bold;">Current ATS Score: {score}%</p>
-            """, unsafe_allow_html=True)
-
-            st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
-    else:
-        st.warning("Please upload your resume to get ATS score")
-if generate_clicked:
+if submit_1 or submit_2 or submit_3 or submit_4 or generate_clicked:
     if uploaded_file is not None and input_text:
-        with st.spinner("✨ Creating your optimized resume..."):
-            # First get original evaluation
-            pdf_content = convert_pdf_to_image(uploaded_file)
-            original_evaluation = get_gemini_response(input_text, pdf_content, input_prompt3)
-            original_score = extract_score_from_evaluation(original_evaluation)
-            original_missing = extract_missing_keywords(original_evaluation)
+        # Extract and analyze resume
+        resume_text = extract_text_from_pdf(uploaded_file)
+        resume_data = analyzer.parse_resume(resume_text)
+        analysis_results = analyzer.calculate_ats_score(resume_data, input_text)
 
-            # Generate improved resume
-            improved_resume = generate_improved_resume(input_text, pdf_content)
+        if submit_1:  # Resume Evaluation
+            with st.spinner("🔍 Analyzing your resume..."):
+                st.markdown('<h2 class="sub-header">🔍 Professional Evaluation</h2>', unsafe_allow_html=True)
 
-            # Evaluate improved version
-            improved_content = [{"mime_type": "text/plain", "data": base64.b64encode(improved_resume.encode()).decode()}]
-            improved_evaluation = get_gemini_response(input_text, improved_content, input_prompt3)
-            improved_score = extract_score_from_evaluation(improved_evaluation)
-            improved_missing = extract_missing_keywords(improved_evaluation)
+                # Display score
+                st.markdown(f"""
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {analysis_results['total_score']}%"></div>
+                    </div>
+                    <p style="text-align: center; font-weight: bold;">Current ATS Match: {analysis_results['total_score']}%</p>
+                """, unsafe_allow_html=True)
 
-            # Generate comparison report
-            progress_report = evaluate_resume_progress(original_score, improved_score,
-                                                        original_missing, improved_missing)
+                # Detailed evaluation
+                evaluation_prompt = f"""
+                    As an experienced HR professional, provide a detailed evaluation of this resume against the job description.
 
-            # Display results
-            st.markdown('<h2 class="sub-header">✨ Optimization Results</h2>', unsafe_allow_html=True)
+                    Current ATS Score: {analysis_results['total_score']}%
+                    Missing Keywords: {analysis_results['missing_keywords']}
+                    Format Issues: {analysis_results['format_issues']}
 
-            # Score comparison visualization
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.info(f"Original Score: {original_score}%")
-            with col2:
-                st.success(f"Optimized Score: {improved_score}%")
-            with col3:
-                improvement = improved_score - original_score
-                st.info(f"Improvement: +{improvement}%")
+                    Provide analysis in this format:
 
-            st.subheader("Key Improvements")
-            recovered_keywords = list(set(original_missing) - set(improved_missing))
-            if recovered_keywords:
-                st.success(f"Recovered keywords: {', '.join(recovered_keywords)}")
-            else:
-                st.info("No new keywords recovered.")
-            st.success("Improved formatting for better ATS parsing")
-            st.success("Enhanced keyword placement and frequency")
+                    ### Strengths:
+                    - List key strengths
 
-            st.subheader("Recommendations")
-            st.warning("Add more quantifiable achievements")
-            st.warning("Include missing keywords naturally")
-            st.warning("Optimize section headers for ATS")
+                    ### Weaknesses:
+                    - List areas needing improvement
+                    """
 
-            with st.expander("📝 Original Resume Evaluation"):
-                st.markdown(f'<div class="response-container">{original_evaluation}</div>', unsafe_allow_html=True)
+                evaluation = get_gemini_response(input_text,
+                                                 [{"mime_type": "text/plain", "data": base64.b64encode(resume_text.encode()).decode()}],
+                                                 evaluation_prompt)
+                st.markdown(f'<div class="response-container">{evaluation}</div>', unsafe_allow_html=True)
 
-            with st.expander("🆕 Optimized Resume"):
-                st.markdown(f'<div class="response-container">{improved_resume}</div>', unsafe_allow_html=True)
+        elif submit_2:  # Skillset Improvement
+            with st.spinner("💡 Generating improvement suggestions..."):
+                st.markdown('<h2 class="sub-header">💡 Skillset Development Plan</h2>', unsafe_allow_html=True)
 
-            with st.expander("🔍 Optimized Resume Evaluation"):
-                st.markdown(f'<div class="response-container">{improved_evaluation}</div>', unsafe_allow_html=True)
+                skills_prompt = f"""
+                    Analyze this resume and job description to create a skills development plan:
 
-            # Download button
-            try:
-                pdf_buffer = create_pdf(improved_resume)
-                st.download_button(
-                    label="📄 Download Improved Resume (PDF)",
-                    data=pdf_buffer,
-                    file_name="improved_resume.pdf",
-                    mime="application/pdf",
-                    key="download-resume",
-                    type="primary",
-                    use_container_width=True
-                )
-            except Exception as e:
-                st.error(f"Error generating PDF: {str(e)}")
+                    Resume Skills: {resume_data['entities']['skills']}
+                    Job Requirements: {analyzer._extract_keywords(input_text)}
+                    Missing Keywords: {analysis_results['missing_keywords']}
+
+                    Provide:
+                    1. Skills gap analysis
+                    2. Recommended learning resources
+                    3. Timeline for improvement
+                    """
+
+                skills_analysis = get_gemini_response(input_text,
+                                                     [{"mime_type": "text/plain", "data": base64.b64encode(resume_text.encode()).decode()}],
+                                                     skills_prompt)
+                st.markdown(f'<div class="response-container">{skills_analysis}</div>', unsafe_allow_html=True)
+
+        elif submit_3:  # Missing Keywords
+            with st.spinner("🔍 Scanning for missing keywords..."):
+                st.markdown('<h2 class="sub-header">🔑 Critical Missing Keywords</h2>', unsafe_allow_html=True)
+
+                # Display missing keywords
+                st.markdown("<h3>Missing Keywords from Job Description:</h3>", unsafe_allow_html=True)
+                for kw in analysis_results['missing_keywords']:
+                    st.markdown(f'<span class="keyword-chip missing-keyword">{kw}</span>', unsafe_allow_html=True)
+
+                # Show keyword analysis
+                st.markdown("<h3 style='margin-top: 20px;'>Keyword Analysis:</h3>", unsafe_allow_html=True)
+                st.markdown(f"""
+                    <div class="score-details">
+                        <p><strong>Keyword Match Score:</strong> {int(analysis_results['component_scores']['keyword'] * 100)}%</p>
+                        <p>This measures how well your resume includes important keywords from the job description.</p>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        elif submit_4:  # ATS Score
+            with st.spinner("📊 Calculating ATS score..."):
+                st.markdown('<h2 class="sub-header">📊 ATS Compatibility Report</h2>', unsafe_allow_html=True)
+
+                # Display comprehensive score breakdown
+                st.markdown(f"""
+                    <div class="score-comparison">
+                        <div class="score-box {'optimized-score' if analysis_results['total_score'] > 70 else 'original-score'}">
+                            <h3>ATS Compatibility Score</h3>
+                            <div class="score-value">{analysis_results['total_score']}%</div>
+                            <p>{'Good' if analysis_results['total_score'] > 70 else 'Needs Improvement'}</p>
+                        </div>
+                    </div>
+
+                    <h3>Score Breakdown:</h3>
+                    <div class="score-details">
+                        <p><strong>Keyword Matching:</strong> {int(analysis_results['component_scores']['keyword'] * 100)}%</p>
+                        <p><strong>Section Completeness:</strong> {int(analysis_results['component_scores']['section'] * 100)}%</p>
+                        <p><strong>Formatting:</strong> {int(analysis_results['component_scores']['format'] * 100)}%</p>
+                        <p><strong>Experience Relevance:</strong> {int(analysis_results['component_scores']['experience'] * 100)}%</p>
+                    </div>
+
+                    <h3>Formatting Issues:</h3>
+                    <ul>
+                        {''.join([f'<li>{issue}</li>' for issue in analysis_results['format_issues']]) or '<li>No major formatting issues detected</li>'}
+                    </ul>
+                """, unsafe_allow_html=True)
+
+        elif generate_clicked:  # Generate Improved Resume
+            with st.spinner("✨ Creating your optimized resume..."):
+                # Generate improved resume
+                improved_resume = generate_improved_resume(resume_text, input_text, analysis_results)
+
+                # Analyze the improved version
+                improved_data = analyzer.parse_resume(improved_resume)
+                improved_analysis = analyzer.calculate_ats_score(improved_data, input_text)
+
+                # Display results
+                st.markdown('<h2 class="sub-header">✨ Optimization Results</h2>', unsafe_allow_html=True)
+
+                # Score comparison
+                st.markdown(f"""
+                    <div class="score-comparison">
+                        <div class="score-box original-score">
+                            <h3>Original Score</h3>
+                            <div class="score-value">{analysis_results['total_score']}%</div>
+                        </div>
+                        <div class="score-box optimized-score">
+                            <h3>Optimized Score</h3>
+                            <div class="score-value">{improved_analysis['total_score']}%</div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin: 20px 0;">
+                        <h3>Improvement: {improved_analysis['total_score'] - analysis_results['total_score']}% increase</h3>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                # Show improved resume
+                with st.expander("🆕 View Optimized Resume"):
+                    st.markdown(f'<div class="response-container">{improved_resume}</div>', unsafe_allow_html=True)
+
+                # The following section for displaying "Key Improvements Made" is removed
+                # st.markdown('<h3>Key Improvements Made:</h3>', unsafe_allow_html=True)
+                # changes_prompt = f"""
+                #     Compare these two resumes and list the key improvements made:
+
+                #     Original Resume (Score: {analysis_results['total_score']}%):
+                #     {resume_text}
+
+                #     Optimized Resume (Score: {improved_analysis['total_score']}%):
+                #     {improved_resume}
+
+                #     List the specific changes that improved the ATS score in bullet points.
+                #     """
+
+                # changes = get_gemini_response("",
+                #                               [{"mime_type": "text/plain", "data": base64.b64encode(changes_prompt.encode()).decode()}],
+                #                               changes_prompt)
+                # st.markdown(f'<div class="response-container">{changes}</div>', unsafe_allow_html=True)
+
+                # Download button
+                try:
+                    pdf_buffer = create_pdf(improved_resume)
+                    st.download_button(
+                        label="📄 Download Improved Resume (PDF)",
+                        data=pdf_buffer,
+                        file_name="optimized_resume.pdf",
+                        mime="application/pdf",
+                        key="download-resume",
+                        type="primary",
+                        use_container_width=True
+                    )
+                except Exception as e:
+                    st.error(f"Error generating PDF: {str(e)}")
+
     elif not input_text:
-        st.warning("Please enter a job description to optimize your resume")
+        st.warning("Please enter a job description to analyze your resume")
     else:
-        st.warning("Please upload your resume to generate an improved version")
+        st.warning("Please upload your resume to proceed")
