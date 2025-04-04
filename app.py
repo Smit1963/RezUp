@@ -146,7 +146,7 @@ st.markdown("""
         }
 
         /* Style adjustment for dark mode */
-        .streamlit-dark-theme div.centered > p.tagline { /* More specific selector */
+        .streamlit-dark-theme .tagline { /* Targeting the tagline directly */
             color: var(--light) !important; /* Set color to white in dark mode */
         }
 
