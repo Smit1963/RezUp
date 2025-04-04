@@ -635,7 +635,6 @@ elif submit_4:
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get ATS score")
-
 if generate_clicked:
     if uploaded_file is not None and input_text:
         with st.spinner("✨ Creating your optimized resume..."):
@@ -674,6 +673,9 @@ if generate_clicked:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+            # Calculate improvement here
+            improvement = improved_score - original_score
 
             # Improvement percentage
             st.markdown(f"""
