@@ -8,10 +8,8 @@ import os
 import re
 from dotenv import load_dotenv
 from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
-from reportlab.lib.enums import TA_CENTER
 
 # Load environment variables
 load_dotenv()
@@ -159,130 +157,16 @@ def evaluate_resume_progress(original_score, optimized_score, original_missing, 
     """
     return report
 
-def display_improvement_report(original_score, optimized_score, recovered_keywords):
-    """Display the improvement report in a styled UI format"""
-    improvement = optimized_score - original_score
-
-    st.markdown(f"""
-    <div style='
-        background: linear-gradient(135deg, #f5f7fa 0%, #e4efe9 100%);
-        border-radius: 12px;
-        padding: 24px;
-        margin: 20px 0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    '>
-        <h2 style='color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;'>🚀 Improvement Report</h2>
-
-        <div style='
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            margin: 20px 0;
-        '>
-            <div style='
-                background: white;
-                padding: 16px;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                text-align: center;
-            '>
-                <h3 style='color: #7f8c8d; margin: 0 0 8px 0;'>Original Score</h3>
-                <div style='
-                    font-size: 32px;
-                    font-weight: bold;
-                    color: #e74c3c;
-                '>{original_score}%</div>
-            </div>
-
-            <div style='
-                background: white;
-                padding: 16px;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                text-align: center;
-            '>
-                <h3 style='color: #7f8c8d; margin: 0 0 8px 0;'>Optimized Score</h3>
-                <div style='
-                    font-size: 32px;
-                    font-weight: bold;
-                    color: #2ecc71;
-                '>{optimized_score}%</div>
-            </div>
-
-            <div style='
-                background: white;
-                padding: 16px;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                text-align: center;
-            '>
-                <h3 style='color: #7f8c8d; margin: 0 0 8px 0;'>Improvement</h3>
-                <div style='
-                    font-size: 32px;
-                    font-weight: bold;
-                    color: #3498db;
-                '>+{improvement}%</div>
-            </div>
-        </div>
-
-        <div style='
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 16px 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        '>
-            <h3 style='color: #2c3e50; margin-top: 0;'>🔑 Key Improvements</h3>
-            <ul style='
-                padding-left: 24px;
-                margin: 0;
-            '>
-                <li style='margin-bottom: 8px;'>Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords) if recovered_keywords else 'None'}</li>
-                <li style='margin-bottom: 8px;'>Improved formatting for better ATS parsing</li>
-                <li style='margin-bottom: 8px;'>Enhanced keyword placement and frequency</li>
-            </ul>
-        </div>
-
-        <div style='
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        '>
-            <h3 style='color: #2c3e50; margin-top: 0;'>💡 Recommendations</h3>
-            <ul style='
-                padding-left: 24px;
-                margin: 0;
-            '>
-                <li style='margin-bottom: 8px;'>Add more quantifiable achievements</li>
-                <li style='margin-bottom: 8px;'>Include missing keywords naturally</li>
-                <li style='margin-bottom: 8px;'>Optimize section headers for ATS</li>
-            </ul>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
 def get_improvement_report_text(original_score, optimized_score, recovered_keywords):
-    """Generate a plain text improvement report"""
+    """Generate improvement report details for UI display"""
     improvement = optimized_score - original_score
-    report = f"""
-    Improvement Report
-
-    Original Score: {original_score}%
-    Optimized Score: {optimized_score}%
-    Improvement: +{improvement}%
-
-    Key Improvements:
-    - Recovered {len(recovered_keywords)} keywords: {', '.join(recovered_keywords) if recovered_keywords else 'None'}
-    - Improved formatting for better ATS parsing
-    - Enhanced keyword placement and frequency
-
-    Recommendations:
-    - Add more quantifiable achievements
-    - Include missing keywords naturally
-    - Optimize section headers for ATS
-    """
-    return report
+    report_data = {
+        "original_score": original_score,
+        "optimized_score": optimized_score,
+        "improvement": improvement,
+        "recovered_keywords": recovered_keywords
+    }
+    return report_data
 
 # Streamlit UI Setup
 st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="logo.png")
@@ -683,28 +567,28 @@ if generate_clicked:
             st.markdown('<h2 class="sub-header">✨ Optimization Results</h2>', unsafe_allow_html=True)
 
             # Score comparison visualization
-            st.markdown(f"""
-            <div class="score-comparison">
-                <div class="score-box original-score">
-                    <h3>Original Score</h3>
-                    <div class="score-value">{original_score}%</div>
-                </div>
-                <div class="score-box optimized-score">
-                    <h3>Optimized Score</h3>
-                    <div class="score-value">{improved_score}%</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.info(f"Original Score: {original_score}%")
+            with col2:
+                st.success(f"Optimized Score: {improved_score}%")
+            with col3:
+                improvement = improved_score - original_score
+                st.info(f"Improvement: +{improvement}%")
 
-            # Calculate improvement here
-            improvement = improved_score - original_score
+            st.subheader("Key Improvements")
+            recovered_keywords = list(set(original_missing) - set(improved_missing))
+            if recovered_keywords:
+                st.success(f"Recovered keywords: {', '.join(recovered_keywords)}")
+            else:
+                st.info("No new keywords recovered.")
+            st.success("Improved formatting for better ATS parsing")
+            st.success("Enhanced keyword placement and frequency")
 
-            # Improvement percentage
-            st.markdown(f"""
-            <div style="text-align: center; margin: 20px 0;">
-                <h3>Improvement: {improvement}% increase</h3>
-            </div>
-            """, unsafe_allow_html=True)
+            st.subheader("Recommendations")
+            st.warning("Add more quantifiable achievements")
+            st.warning("Include missing keywords naturally")
+            st.warning("Optimize section headers for ATS")
 
             with st.expander("📝 Original Resume Evaluation"):
                 st.markdown(f'<div class="response-container">{original_evaluation}</div>', unsafe_allow_html=True)
@@ -714,22 +598,6 @@ if generate_clicked:
 
             with st.expander("🔍 Optimized Resume Evaluation"):
                 st.markdown(f'<div class="response-container">{improved_evaluation}</div>', unsafe_allow_html=True)
-
-            # Display the improved UI for progress report
-            display_improvement_report(
-                original_score=original_score,
-                optimized_score=improved_score,
-                recovered_keywords=list(set(original_missing) - set(improved_missing))
-            )
-
-            # Generate and display the plain text improvement report
-            improvement_report_text = get_improvement_report_text(
-                original_score=original_score,
-                optimized_score=improved_score,
-                recovered_keywords=list(set(original_missing) - set(improved_missing))
-            )
-            st.subheader("Plain Text Improvement Report")
-            st.text_area("Improvement Report", improvement_report_text, height=250)
 
             # Download button
             try:
