@@ -4,8 +4,3 @@ Pillow
 PyMuPDF
 python-dotenv
 reportlab
-nltk
-spacy
-en_core_web_lg
-scikit-learn
-numpy
