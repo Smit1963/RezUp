@@ -1,7 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
-import fitz  # PyMuPDF
+import fitz
 import io
 import base64
 import os
@@ -11,10 +11,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
-# Load environment variables
 load_dotenv()
-
-# Configure Google API key
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 def get_gemini_response(input_text, pdf_content, prompt):
@@ -24,20 +21,13 @@ def get_gemini_response(input_text, pdf_content, prompt):
 
 def convert_pdf_to_image(uploaded_file):
     pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-    page = pdf_document.load_page(0)  # Load the first page
+    page = pdf_document.load_page(0)
     pix = page.get_pixmap()
-
     img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='JPEG')
     img_byte_arr = img_byte_arr.getvalue()
-
-    pdf_parts = [
-        {
-            "mime_type": "image/jpeg",
-            "data": base64.b64encode(img_byte_arr).decode()
-        }
-    ]
+    pdf_parts = [{"mime_type": "image/jpeg", "data": base64.b64encode(img_byte_arr).decode()}]
     return pdf_parts
 
 def generate_improved_resume(input_text, pdf_content):
@@ -67,36 +57,13 @@ def generate_improved_resume(input_text, pdf_content):
     return response.text
 
 def create_pdf(resume_text):
-    """Create PDF using ReportLab with proper style handling"""
     buffer = io.BytesIO()
     styles = getSampleStyleSheet()
-
-    # Add custom styles
-    styles.add(ParagraphStyle(
-        name='RezUpHeader',
-        fontName='Helvetica-Bold',
-        fontSize=16,
-        spaceAfter=12
-    ))
-
-    styles.add(ParagraphStyle(
-        name='RezUpSubheader',
-        fontName='Helvetica-Bold',
-        fontSize=14,
-        spaceAfter=8
-    ))
-
-    styles.add(ParagraphStyle(
-        name='RezUpBody',
-        fontSize=12,
-        leading=14,
-        spaceAfter=6
-    ))
-
+    styles.add(ParagraphStyle(name='RezUpHeader', fontName='Helvetica-Bold', fontSize=16, spaceAfter=12))
+    styles.add(ParagraphStyle(name='RezUpSubheader', fontName='Helvetica-Bold', fontSize=14, spaceAfter=8))
+    styles.add(ParagraphStyle(name='RezUpBody', fontSize=12, leading=14, spaceAfter=6))
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     story = []
-
-    # Process content
     for line in resume_text.split('\n'):
         if not line.strip():
             story.append(Spacer(1, 12))
@@ -108,18 +75,15 @@ def create_pdf(resume_text):
             story.append(Paragraph(line[2:-2], styles['Heading3']))
         else:
             story.append(Paragraph(line, styles['RezUpBody']))
-
     doc.build(story)
     buffer.seek(0)
     return buffer
 
 def extract_score_from_evaluation(evaluation_text):
-    """Extract the percentage score from evaluation text"""
     match = re.search(r'(\d{1,3})%', evaluation_text)
     return int(match.group(1)) if match else 0
 
 def extract_missing_keywords(evaluation_text):
-    """Extract missing keywords from evaluation text"""
     lines = evaluation_text.split('\n')
     keywords = []
     in_section = False
@@ -133,10 +97,8 @@ def extract_missing_keywords(evaluation_text):
     return keywords
 
 def evaluate_resume_progress(original_score, optimized_score, original_missing, optimized_missing):
-    """Generate progress data without the unwanted sections"""
     improvement = optimized_score - original_score
     recovered_keywords = set(original_missing) - set(optimized_missing)
-
     return {
         "original_score": original_score,
         "optimized_score": optimized_score,
@@ -145,10 +107,8 @@ def evaluate_resume_progress(original_score, optimized_score, original_missing, 
         "remaining_missing": list(set(optimized_missing))
     }
 
-# Streamlit UI Setup
 st.set_page_config(page_title="RezUp - Resume Optimizer", layout="wide", page_icon="logo.png")
 
-# Custom CSS styling
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
@@ -185,9 +145,8 @@ st.markdown("""
             font-weight: 400;
         }
 
-        /* Style adjustment for dark mode */
         .streamlit-dark-theme p.tagline {
-            color: var(--dark) !important; /* Set color to dark in dark mode */
+            color: var(--light) !important; /* Set color to white in dark mode */
         }
 
         .sub-header {
@@ -198,7 +157,7 @@ st.markdown("""
         }
 
         .streamlit-dark-theme .sub-header {
-            color: var(--light); /* Light text for sub-headers in dark mode */
+            color: var(--light);
         }
 
         .stButton button {
@@ -297,13 +256,12 @@ st.markdown("""
             background-color: #f9f9f9;
             border-left: 4px solid var(--primary);
             margin-top: 1.5rem;
-            color: var(--dark); /* Default text color */
+            color: var(--dark);
         }
 
-        /* Style adjustments for dark mode */
         .streamlit-dark-theme .response-container {
-            background-color: #262730; /* Dark background for dark mode */
-            color: var(--light); /* Light text color for dark mode */
+            background-color: #262730;
+            color: var(--light);
             border-left-color: var(--secondary);
         }
 
@@ -376,11 +334,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# App Header
 st.markdown('<h1 class="main-title">☄️RezUp! Till You Make It</h1>', unsafe_allow_html=True)
 st.markdown('<p class="tagline">AI that fixes your resume</p>', unsafe_allow_html=True)
 
-# Main Content
 with st.container():
     st.markdown('<div class="centered">', unsafe_allow_html=True)
     input_text = st.text_area("📝 Enter Job Description", key="input",
@@ -391,7 +347,6 @@ with st.container():
     if uploaded_file is not None:
         st.markdown('<p class="success-message">✅ Resume uploaded successfully!</p>', unsafe_allow_html=True)
 
-# Action Buttons
 st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -404,12 +359,10 @@ with col4:
     submit_4 = st.button("📊 ATS Score", key="score")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Generate Button
 st.markdown('<div class="generate-btn-container">', unsafe_allow_html=True)
 generate_clicked = st.button("✨ Generate Improved Resume", key="generate")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Prompts
 input_prompt1 = """
 As an experienced Technical HR Manager with expertise in data science, AI, and tech fields, review this resume against the job description.
 Provide a professional evaluation of alignment with the role, highlighting:
@@ -465,15 +418,12 @@ Present in a bullet-point list with priority indicators (High/Medium/Low).
 Include a percentage score at the top (e.g., "Current ATS match: 65%").
 """
 
-# Button Handlers
 if submit_1:
     if uploaded_file is not None:
         with st.spinner("🔍 Analyzing your resume..."):
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt1)
             st.markdown('<h2 class="sub-header">🔍 Professional Evaluation</h2>', unsafe_allow_html=True)
-
-            # Extract and display score
             score = extract_score_from_evaluation(response)
             st.markdown(f"""
             <div class="progress-bar">
@@ -481,7 +431,6 @@ if submit_1:
             </div>
             <p style="text-align: center; font-weight: bold;">Current Match: {score}%</p>
             """, unsafe_allow_html=True)
-
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get analysis")
@@ -502,8 +451,6 @@ elif submit_3:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt4)
             st.markdown('<h2 class="sub-header">🔑 Critical Missing Keywords</h2>', unsafe_allow_html=True)
-
-            # Extract and display score
             score = extract_score_from_evaluation(response)
             st.markdown(f"""
             <div class="progress-bar">
@@ -511,7 +458,6 @@ elif submit_3:
             </div>
             <p style="text-align: center; font-weight: bold;">Current ATS Match: {score}%</p>
             """, unsafe_allow_html=True)
-
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to check keywords")
@@ -522,8 +468,6 @@ elif submit_4:
             pdf_content = convert_pdf_to_image(uploaded_file)
             response = get_gemini_response(input_text, pdf_content, input_prompt3)
             st.markdown('<h2 class="sub-header">📊 ATS Compatibility Report</h2>', unsafe_allow_html=True)
-
-            # Extract and display score
             score = extract_score_from_evaluation(response)
             st.markdown(f"""
             <div class="progress-bar">
@@ -531,7 +475,6 @@ elif submit_4:
             </div>
             <p style="text-align: center; font-weight: bold;">Current ATS Score: {score}%</p>
             """, unsafe_allow_html=True)
-
             st.markdown(f'<div class="response-container">{response}</div>', unsafe_allow_html=True)
     else:
         st.warning("Please upload your resume to get ATS score")
@@ -539,29 +482,18 @@ elif submit_4:
 if generate_clicked:
     if uploaded_file is not None and input_text:
         with st.spinner("✨ Creating your optimized resume..."):
-            # First get original evaluation
             pdf_content = convert_pdf_to_image(uploaded_file)
             original_evaluation = get_gemini_response(input_text, pdf_content, input_prompt3)
             original_score = extract_score_from_evaluation(original_evaluation)
             original_missing = extract_missing_keywords(original_evaluation)
-
-            # Generate improved resume
             improved_resume = generate_improved_resume(input_text, pdf_content)
-
-            # Evaluate improved version
             improved_content = [{"mime_type": "text/plain", "data": base64.b64encode(improved_resume.encode()).decode()}]
             improved_evaluation = get_gemini_response(input_text, improved_content, input_prompt3)
             improved_score = extract_score_from_evaluation(improved_evaluation)
             improved_missing = extract_missing_keywords(improved_evaluation)
-
-            # Get progress data
             progress_data = evaluate_resume_progress(original_score, improved_score,
                                                   original_missing, improved_missing)
-
-            # Display results - simplified version
             st.markdown('<h2 class="sub-header">✨ Optimization Results</h2>', unsafe_allow_html=True)
-
-            # Score comparison visualization
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.info(f"Original Score: {progress_data['original_score']}%")
@@ -569,25 +501,16 @@ if generate_clicked:
                 st.success(f"Optimized Score: {progress_data['optimized_score']}%")
             with col3:
                 st.info(f"Improvement: +{progress_data['improvement']}%")
-
-            # Show recovered keywords if any
             if progress_data['recovered_keywords']:
                 st.success(f"Recovered keywords: {', '.join(progress_data['recovered_keywords'])}")
-
-            # Show remaining missing keywords if any
             if progress_data['remaining_missing']:
                 st.warning(f"Still missing: {', '.join(progress_data['remaining_missing'])}")
-
             with st.expander("📝 Original Resume Evaluation"):
                 st.markdown(f'<div class="response-container">{original_evaluation}</div>', unsafe_allow_html=True)
-
             with st.expander("🆕 Optimized Resume"):
                 st.markdown(f'<div class="response-container">{improved_resume}</div>', unsafe_allow_html=True)
-
             with st.expander("🔍 Optimized Resume Evaluation"):
                 st.markdown(f'<div class="response-container">{improved_evaluation}</div>', unsafe_allow_html=True)
-
-            # Download button
             try:
                 pdf_buffer = create_pdf(improved_resume)
                 st.download_button(
