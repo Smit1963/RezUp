@@ -89,7 +89,7 @@ GOOGLE_API_KEY="your_api_key_here"
 ```bash
 streamlit run app.py
 ```
-#### 2. Access in browser at https://rezup-resume-optimizer.streamlit.app/
+#### 2. Access in browser ([App Link](https://rez-up.streamlit.app/))
 
 ## 🤝 Contributing
 If you would like to contribute to this project, please follow these steps:
