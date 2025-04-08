@@ -1,0 +1,8 @@
+google-generativeai
+Pillow
+PyMuPdf
+reportlab
+python-dotenv
+Flask
+Flask-CORS
+PyInstaller
