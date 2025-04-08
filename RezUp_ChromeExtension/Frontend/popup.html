@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RezUp - Resume Optimizer</title>
+  <link rel="stylesheet" type="text/css" href="popup.css">
+</head>
+<body>
+  <h1>RezUp!</h1>
+  <textarea id="jobDescription" placeholder="Paste the job description here..."></textarea>
+  <input type="file" id="resumeFile" accept=".pdf">
+
+  <div class="buttons">
+    <button id="evaluateBtn">🔍 Evaluate</button>
+    <button id="skillsBtn">💡 Skills</button>
+    <button id="keywordsBtn">🔑 Keywords</button>
+    <button id="scoreBtn">📊 ATS Score</button>
+  </div>
+
+  <button id="generateBtn" class="generate-btn">✨ Generate Improved Resume</button>
+
+  <div id="responseContainer" class="response-container" style="display: none;">
+    <h2>Response:</h2>
+    <pre id="responseText"></pre>
+  </div>
+
+  <div id="progressContainer" style="display: none;">
+    <div class="progress-bar">
+      <div id="progressBarFill" class="progress-fill"></div>
+    </div>
+    <p id="progressText" style="text-align: center; font-weight: bold;"></p>
+  </div>
+
+  <div id="downloadContainer" style="display: none;">
+    <a id="downloadLink" download="improved_resume.pdf">📄 Download Improved Resume (PDF)</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
